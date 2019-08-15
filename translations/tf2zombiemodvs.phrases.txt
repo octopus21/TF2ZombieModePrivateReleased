@@ -1,0 +1,35 @@
+
+"Phrases"
+{
+	"Players Cant Change Team Setup"
+	{
+		"en"		"You can't change team during the intermission."
+        "tr"        "Hazýrlýk süresi esnasýnda takým deðiþtiremezsiniz."
+	}
+	
+	"Players Cant Change Class Round"
+	{
+	    "en"        "You can't change class during round"
+		"tr"        "Round esnasýnda sýnýf deðiþtiremezsiniz."
+	}
+	
+	"Intermission Over"
+	{
+	    "en"        "Intermission Over!"
+		"tr"        "Hazýrlýk bitti!"
+	}
+	
+	"Player Cant Become Zombie Intermission"
+	{
+	    "en"        "You can't become a zombie during the intermission."
+		"tr"        "Hazýrlýk süresi esnasýnda zombi olamazsýnýz."
+	}
+	
+	"Engineer Limit Is Reached"
+	{
+	    "en"        "Engineer limit is reached! You can't choose engineer!."
+		"tr"        "Engineer limiti doldu. Artýk seçemezsiniz."
+	}
+	
+	
+}

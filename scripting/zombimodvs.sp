@@ -265,14 +265,14 @@ public OnClientPutInServer(id)
 		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
-OnClientAuthorized(id) {
+public OnClientAuthorized(id) {
 	if (id > 0 && IsValidClient(id) && IsClientInGame(id) && g_bOyun && TakimdakiOyuncular(3) > 0)
 	{
 		ChangeClientTeam(id, 3);
 		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
-OnClientPostAdminCheck(client) {
+public OnClientPostAdminCheck(client) {
 	KayitliKullanicilar(client);
 }
 public OnClientDisconnect(client) {
@@ -359,17 +359,17 @@ public Action:OnGetMaxHealth(client, &maxhealth)
 		if (TF2_GetClientTeam(client) == TFTeam_Blue)
 		{
 			//maxhealth = 5000;
-			if (!g_bZombiEscape) {
-				maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 3; // Zombi Survival Can Formülü
-			} else {
-				maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 10; //Zombi Escape Can Formulü
-			}
+			maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 3; // Zombi Survival Can Formülü
 			MaxHealth[client] = maxhealth;
 			return Plugin_Handled;
 		}
 	}
 	return Plugin_Continue;
 }
+
+//-- "[TF2] Be The Zombie" by Master Xyon
+
+//-- "[TF2] Be The Zombie" by Master Xyon
 public Action:Event_Resupply(Handle:hEvent, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
@@ -618,7 +618,8 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 	{
 		zombi(victim);
 		HUD(-1.0, 0.2, 6.0, 255, 0, 0, 2, "\n☠☠☠\n%N", victim);
-		EmitSoundToAll("npc/fast_zombie/fz_scream1.wav");
+		//EmitSoundToAll("npc/fast_zombie/fz_scream1.wav");
+		EmitSoundToAll("npc/fast_zombie/fz_scream1.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, victim, NULL_VECTOR, NULL_VECTOR, true, 0.0);
 	}
 }
 public Action:hazirlik(Handle:timer, any:client)
@@ -929,6 +930,7 @@ public Action:Timer_SetRoundTime(Handle:timer, any:ent1)
 {
 	SetVariantInt(GetConVarInt(zm_tDalgasuresi)); // 600 sec ~ 10min
 	AcceptEntityInput(ent1, "SetTime");
+	
 }
 oyunuresetle()
 {
@@ -955,7 +957,7 @@ public Action:res(Handle:timer, any:id)
 TF2_OnWaitingForPlayersStart()
 {
 	for (new i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i) && IsValidClient(i) && TF2_GetClientTeam(i) == TFTeam_Blue) {
+		if (IsClientInGame(i) && IsValidClient(i) && TF2_GetClientTeam(i) == TFTeam_Blue && !g_bOyun) {
 			ChangeClientTeam(i, 2);
 		}
 	}
@@ -1045,19 +1047,6 @@ ZomEnableDisable()
 			PrintToServer("\n\n\n                                      **********[ZM]Only ZM Maps! -- S E B E P // R E A S O N**********\n\n\n");
 		}
 	}
-}
-
-
-PerformFade(client, duration, const color[4]) {
-	new Handle:hFadeClient = StartMessageOne("Fade", client);
-	BfWriteShort(hFadeClient, duration); // FIXED 16 bit, with SCREENFADE_FRACBITS fractional, milliseconds duration
-	BfWriteShort(hFadeClient, 0); // FIXED 16 bit, with SCREENFADE_FRACBITS fractional, milliseconds duration until reset (fade & hold)
-	BfWriteShort(hFadeClient, (FFADE_PURGE | FFADE_OUT | FFADE_STAYOUT)); // fade type (in / out)
-	BfWriteByte(hFadeClient, color[0]); // fade red
-	BfWriteByte(hFadeClient, color[1]); // fade green
-	BfWriteByte(hFadeClient, color[2]); // fade blue
-	BfWriteByte(hFadeClient, color[3]); // fade alpha
-	EndMessage();
 }
 
 
@@ -1299,8 +1288,12 @@ KayitliKullanicilar(client) {
 	GetClientAuthId(client, AuthId_Steam2, sClientAuth, sizeof(sClientAuth));
 	PrintToServer("%s", sClientAuth);
 	//PrintToServer("%s", sClientAuth);
-	if (StrEqual(sClientAuth, "STEAM_0:0:81591956", false) || StrEqual(sClientAuth, "STEAM_x:x:xxx", false)) {
+	if (StrEqual(sClientAuth, "STEAM_0:0:81591956", false)) {  // Devil
 		g_iVaultKullanicilar[client] = true; //DOKUNMA!
+		PrintToServer("Donator:%s", sClientAuth);
+	}
+	else if (StrEqual(sClientAuth, "STEAM_0:0:95142811", false)) {  // Berke
+		g_iVaultKullanicilar[client] = true;
 		PrintToServer("Donator:%s", sClientAuth);
 	} else {
 		g_iVaultKullanicilar[client] = false; //CIZZZZ
@@ -1320,8 +1313,8 @@ public Action:say(client, args)
 			PrintToChatAll("\x0700FF00[ A very kind Donator ]\x07FFCC00%N: %s", client, argx); //Özel Tag (Devil)
 			return Plugin_Handled;
 		}
-		else if (StrEqual(sClientAuth, "STEAM_0:0:XXXXX", false)) {
-			PrintToChatAll("\x0700FF00[ XXX's Special Tag ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(XX)
+		else if (StrEqual(sClientAuth, "STEAM_0:0:95142811", false)) {
+			PrintToChatAll("\x0700FF00[ Gay Faggot ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(XX)
 			return Plugin_Handled;
 		}
 		
@@ -1332,6 +1325,7 @@ public Action:say(client, args)
 	}
 }
 /*
+--Usage for later.
 	new setQueue[MAXPLAYERS + 1];
 	new queuepoints[MAXPLAYERS + 1];
 	new g_iActiveBoss[MAXPLAYERS + 1];

@@ -169,6 +169,8 @@ new bool:g_bZombiEscape = false;
 
 new g_iSpeedTimer[MAXPLAYERS + 1];
 
+
+
 //KvStrings
 //static String:KvValue[PLATFORM_MAX_PATH]; //For Next Update
 
@@ -562,7 +564,7 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 	} else {
 		SetEntityRenderColor(client, 255, 255, 255, 0);
 		if (g_iVaultKullanicilar[client]) {
-			PrintToChat(client, "Sen kaydedilmişsin");
+			PrintToConsole(client, "Registered Vault");
 		}
 		switch (TF2_GetPlayerClass(client))
 		{
@@ -589,7 +591,7 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 					decl String:classNameDemo[128];
 					if (GetEntityClassname(slotDemo, classNameDemo, sizeof(classNameDemo)) && StrContains(classNameDemo, "tf_weapon", false) != -1) {
 						switch (GetEntProp(slotDemo, Prop_Send, "m_iItemDefinitionIndex")) {
-							case 265: {  } //Sticky Jumper
+							case 265: { TF2_RemoveWeaponSlot(client, slotDemo); } //Sticky Jumper
 							default:TF2_RemoveWeaponSlot(client, slotDemo);
 						}
 					}
@@ -610,6 +612,8 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new victim = GetClientOfUserId(GetEventInt(event, "userid"));
+	decl Float:flPos[3];
+	GetClientAbsOrigin(victim, flPos);
 	if (GetEventInt(event, "death_flags") & 32) // Sahte ölüm
 	{
 		return;
@@ -618,8 +622,7 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 	{
 		zombi(victim);
 		HUD(-1.0, 0.2, 6.0, 255, 0, 0, 2, "\n☠☠☠\n%N", victim);
-		//EmitSoundToAll("npc/fast_zombie/fz_scream1.wav");
-		EmitSoundToAll("npc/fast_zombie/fz_scream1.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, victim, NULL_VECTOR, NULL_VECTOR, true, 0.0);
+		EmitSoundToAll("npc/fast_zombie/fz_scream1.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, victim, flPos, NULL_VECTOR, true, 0.0);
 	}
 }
 public Action:hazirlik(Handle:timer, any:client)
@@ -630,9 +633,9 @@ public Action:hazirlik(Handle:timer, any:client)
 	}
 	if (g_iSetupCount <= GetConVarInt(zm_tHazirliksuresi) && g_iSetupCount > 0)
 	{
-		HUD(-1.0, 0.2, 6.0, 255, 255, 0, 1, "Setup:%02d:%02d", g_iSetupCount / 60, g_iSetupCount % 60);
-		HUD(0.02, 0.10, 1.0, 0, 255, 0, 5, "☠Zombie☠:%d", TakimdakiOyuncular(3));
-		HUD(-0.02, 0.10, 1.0, 255, 255, 255, 6, "Humans:%d", TakimdakiOyuncular(2));
+		HUD(-1.0, 0.1, 6.0, 255, 255, 255, 1, " | Setup:%02d:%02d |", g_iSetupCount / 60, g_iSetupCount % 60); //-1.0 x, 0.2 y
+		HUD(0.42, 0.1, 1.0, 0, 255, 0, 5, "%d", TakimdakiOyuncular(3)); //0.02 x, 0.10 y
+		HUD(-0.42, 0.1, 1.0, 255, 255, 255, 6, "%d", TakimdakiOyuncular(2)); //-0.02 x, 0.10 y
 		g_iDalgaSuresi = GetConVarInt(zm_tDalgasuresi);
 		g_bOyun = false;
 	} else {
@@ -654,9 +657,13 @@ public Action:oyun1(Handle:timer, any:id)
 	if (g_iDalgaSuresi <= GetConVarInt(zm_tDalgasuresi) && g_iDalgaSuresi > 0 && g_bOyun)
 	{
 		izleyicikontrolu();
-		HUD(-1.0, 0.2, 6.0, 255, 255, 0, 1, "Round:%02d:%02d", g_iDalgaSuresi / 60, g_iDalgaSuresi % 60);
-		HUD(0.02, 0.10, 1.0, 0, 255, 0, 5, "☠Zombies☠:%d", TakimdakiOyuncular(3));
-		HUD(-0.02, 0.10, 1.0, 255, 255, 255, 6, "Humans:%d", TakimdakiOyuncular(2));
+		//HUD(-1.0, 0.2, 6.0, 255, 255, 255, 1, "Round:%02d:%02d", g_iDalgaSuresi / 60, g_iDalgaSuresi % 60);
+		//HUD(0.02, 0.10, 1.0, 0, 255, 0, 5, "☠Zombies☠:%d", TakimdakiOyuncular(3));
+		//HUD(-0.02, 0.10, 1.0, 255, 255, 255, 6, "Humans:%d", TakimdakiOyuncular(2));
+		HUD(-1.0, 0.1, 6.0, 255, 255, 255, 1, " | Round:%02d:%02d |", g_iDalgaSuresi / 60, g_iDalgaSuresi % 60); //-1.0 x, 0.2 y
+		HUD(0.42, 0.1, 1.0, 0, 255, 0, 5, "%d", TakimdakiOyuncular(3)); //0.02 x, 0.10 y
+		HUD(-0.42, 0.1, 1.0, 255, 255, 255, 6, "%d", TakimdakiOyuncular(2)); //-0.02 x, 0.10 y
+		
 		if (g_iDalgaSuresi == GetConVarInt(zm_tDalgasuresi) - 3) {
 			setuptime();
 		}
@@ -691,6 +698,7 @@ public Action:oyun1(Handle:timer, any:id)
 //Zombie Choosing Core
 stock rastgelezombi()
 {
+	//new volunteerlist;
 	new oyuncular[MaxClients + 1], num;
 	for (new i = 1; i <= MaxClients; i++)
 	{
@@ -699,6 +707,8 @@ stock rastgelezombi()
 			oyuncular[num++] = i;
 		}
 	}
+	//volunteerlist = oyuncular[GetRandomInt(0, num - 1)];
+	
 	return (num == 0) ? 0 : oyuncular[GetRandomInt(0, num - 1)];
 }
 stock bosschoosing()
@@ -741,6 +751,7 @@ zombi(client)
 		SetEntProp(client, Prop_Send, "m_lifeState", 2);
 		ChangeClientTeam(client, 3);
 		SetEntProp(client, Prop_Send, "m_lifeState", 0);
+		//TF2_RespawnPlayer(client);
 		SetEntityRenderColor(client, 0, 255, 0, 0);
 		if (g_bZombiEscape) {
 			if (g_bNotHurt[client]) {
@@ -925,6 +936,9 @@ zombimod()
 		g_bOnlyZMaps = false;
 		PrintToServer("\n\n           ********WARNING!********     \n\n\n ***Zombie Map Recommended Current [MAPNAME] = [%s]***\n\n\n", mapv);
 	}
+	if (g_bOnlyZMaps) {
+		//
+	}
 }
 public Action:Timer_SetRoundTime(Handle:timer, any:ent1)
 {
@@ -954,6 +968,7 @@ public Action:res(Handle:timer, any:id)
 		}
 	}
 }
+/*
 TF2_OnWaitingForPlayersStart()
 {
 	for (new i = 1; i <= MaxClients; i++) {
@@ -962,6 +977,7 @@ TF2_OnWaitingForPlayersStart()
 		}
 	}
 }
+*/
 stock bool:IsValidClient(client, bool:nobots = true)
 {
 	if (client <= 0 || client > MaxClients || !IsClientConnected(client) || (nobots && IsFakeClient(client)))

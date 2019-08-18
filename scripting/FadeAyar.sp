@@ -12,6 +12,9 @@
 
 #define SND_MINEPUT "npc/roller/blade_cut.wav"
 #define SND_MINEACT "npc/roller/mine/rmine_blades_in2.wav"
+#define SND_ZOMBIDLE01 "npc/zombie/zombie_voice_idle1.wav" 
+#define SND_ZOMBIDLE02 "npc/zombie/zombie_voice_idle5.wav"
+#define SND_BARNACLE01 "npc/barnacle/barnacle_bark1.wav"
 
 #define FFADE_IN            (0x0001)        // Just here so we don't pass 0 into the function
 #define FFADE_OUT           (0x0002)        // Fade out (not in)
@@ -48,6 +51,9 @@ new g_iKillsAsHuman[MAXPLAYERS + 1] = 0;
 new bool:g_bMine[2048] = false;
 new bool:g_HomingEnabled[MAXPLAYERS + 1] = false;
 
+//new bool:g_bMineDamage[MAXPLAYERS + 1] = false;
+
+
 int gCount = 1;
 
 int g_iMineCount[MAXPLAYERS + 1] = 0;
@@ -80,6 +86,9 @@ public OnMapStart() {
 	
 	PrecacheSound(SND_MINEPUT, true);
 	PrecacheSound(SND_MINEACT, true);
+	PrecacheSound(SND_ZOMBIDLE01, true);
+	PrecacheSound(SND_ZOMBIDLE02, true);
+	PrecacheSound(SND_BARNACLE01, true);
 	//g_iMineCount[MAXPLAYERS] = 0;
 	//g_iHumanCreditProgress[MAXPLAYERS] = 0;
 }
@@ -131,8 +140,11 @@ public Action:Test(client, args)
 	shop.SetTitle("Zombi Market! [Credits:%d]", g_iHumanCreditProgress[client]);
 	shop.AddItem("1", "LaserMine => [25  Credits]");
 	shop.ExitButton = true;
-	shop.Display(client, 100);
-	SetMine(client);
+	//shop.Display(client, 100);
+	if (!g_bZombi[client]) {
+		shop.Display(client, 100);
+	}
+	//SetMine(client);
 	
 	//g_iTekSefer[client] = 0;
 	//PrintToChat(client, "Slender Ambience:%d", g_iTekSefer[client]);
@@ -144,13 +156,21 @@ public zombishop(Handle menu, MenuAction action, client, item)
 {
 	if (action == MenuAction_Select)
 	{
-		new String:itemBuffer[24];
-		GetMenuItem(menu, item, itemBuffer, sizeof(itemBuffer));
-		if (g_iHumanCreditProgress[client] >= 25) {
-			g_iHumanCreditProgress[client] = g_iHumanCreditProgress[client] - 25;
-			if (g_iMineCount[client] < 15) {
-				if (!g_bZombi[client]) {
-					SetMine(client);
+		switch (item) {
+			case 1: {
+				if (g_iHumanCreditProgress[client] >= 25) {
+					g_iHumanCreditProgress[client] = g_iHumanCreditProgress[client] - 25;
+					if (g_iMineCount[client] < 15) {
+						if (!g_bZombi[client]) {
+							SetMine(client);
+						} else {
+							PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombies can't place mines.");
+						}
+					} else {
+						PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCMine limit is reached.");
+					}
+				} else {
+					PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCNot enough credits to buy this item!");
 				}
 			}
 		}
@@ -173,9 +193,9 @@ public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadc
 			PrintToChat(attacker, " %: %d", g_iDemiBossProgress[attacker]);
 		}
 		else if (!g_bZombi[attacker] && g_bZombi[client]) {
-			g_iHumanCreditProgress[attacker] = g_iHumanCreditProgress[attacker] + 5;
-			PerformHudMsg(attacker, -1.0, 0.40, 2.0, "☠ + 5 Credits ☠");
-			PrintToChat(attacker, " Credits: %d", g_iHumanCreditProgress[attacker]);
+			//g_iHumanCreditProgress[attacker] = g_iHumanCreditProgress[attacker] + 5;
+			//PerformHudMsg(attacker, -1.0, 0.40, 2.0, "☠ + 5 Credits ☠"); //-1.0 x, -1.0 y
+			//PrintToChat(attacker, " Credits: %d", g_iHumanCreditProgress[attacker]);
 		}
 	}
 	
@@ -188,14 +208,21 @@ public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadc
 }
 public Action:Listener_Voice(client, const String:command[], argc) {
 	decl String:arguments[4];
+	decl Float:flPos[3];
+	GetClientAbsOrigin(client, flPos);
 	GetCmdArgString(arguments, sizeof(arguments));
 	if (StrEqual(arguments, "0 0")) {
 		if (GetClientTeam(client) == 3) {
-			SetClientOverlay(client, "effects/tp_refract");
+			SetClientOverlay(client, " "); //effects/tp_refract
+			PerformFade(client, 500, { 0, 255, 0, 125 } );
+			clientTimer[client] = CreateTimer(10.0, timer_Fade, client, TIMER_FLAG_NO_MAPCHANGE);
+			EmitSoundToAll(SND_ZOMBIDLE01, client, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
+			return Plugin_Handled; // continue || none
 		}
-	} else {
+	} else if (StrEqual(arguments, "0 1") || StrEqual(arguments, "0 2") || StrEqual(arguments, "0 3") || StrEqual(arguments, "0 4") || StrEqual(arguments, "0 5") || StrEqual(arguments, "0 6") || StrEqual(arguments, "0 7")) {
+		EmitSoundToAll(SND_ZOMBIDLE02, client, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
 		SetClientOverlay(client, " ");
-		return Plugin_Continue;
+		return Plugin_Handled; //continue
 	}
 	return Plugin_Continue;
 }
@@ -213,6 +240,8 @@ public Action:death(Handle:event, const String:name[], bool:dontBroadcast)
 			g_iKillsAsZombi[killer]++;
 		} else {
 			g_iKillsAsHuman[killer]++;
+			PerformHudMsg(killer, -1.0, 0.40, 2.0, "☠ + 15 Credits ☠");
+			g_iHumanCreditProgress[killer] = g_iHumanCreditProgress[killer] + 15;
 		}
 	}
 	g_iMineCount[killed] = 0;
@@ -286,12 +315,12 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	
 	if (g_bStatusKor[victim]) {
 		PerformHudMsg(victim, -1.0, 0.40, 3.0, "☠ You're targetted by Zombie Bat // You'll be blind for the next 3 secs. ☠");
-		PerformFade(victim, 500, { 0, 0, 0, 255 } );
+		PerformFade(victim, 500, { 255, 255, 255, 0 } );
 		clientTimer[victim] = CreateTimer(3.0, timer_Fade, victim, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	if (g_bStatusJarate[victim]) {
 		PerformHudMsg(victim, -1.0, 0.40, 3.0, "☠ You're targetted by Zombie Sniper // You'll be jarated for the next 6 secs. ☠");
-		SetClientOverlay(victim, "effects/tp_refract");
+		//SetClientOverlay(victim, "effects/tp_refract");
 		//FakeClientCommand(victim, "addcond 23");
 		TF2_AddCondition(victim, TFCond:TFCond_Jarated, 6.0, 0);
 		clientTimer[victim] = CreateTimer(6.0, timer_Fade, victim, TIMER_FLAG_NO_MAPCHANGE);
@@ -607,6 +636,9 @@ public Action TurnBeamOn(Handle timer, DataPack hData)
 	
 	if (IsValidEntity(ent))
 	{
+		if (!g_bZombi[client]) {
+			DispatchKeyValue(ent2, "rendercolor", "0 0 255");
+		}
 		// To Do: Game-based team checks and handling.
 		DispatchKeyValue(ent2, "rendercolor", "0 0 255");
 		AcceptEntityInput(ent2, "TurnOn");
@@ -636,7 +668,7 @@ public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, flo
 {
 	AcceptEntityInput(ent2, "TurnOff");
 	AcceptEntityInput(ent2, "TurnOn");
-	new owner = GetEntPropEnt(ent2, Prop_Data, "m_hOwnerEntity");
+	//new owner = GetEntPropEnt(ent2, Prop_Data, "m_hOwnerEntity");
 	if (g_bZombi[iActivator]) {
 		//UnhookSingleEntityOutput(ent2, "OnBreak", mineBreak);
 		AcceptEntityInput(ent2, "break");
@@ -686,6 +718,9 @@ public Action:OnTakeDamage2(victim, &attacker, &inflictor, &Float:damage, &damag
 	}
 	*/
 	if (victim == attacker) {
+		if (!g_bZombi[victim]) {
+			
+		}
 		PrintToChat(victim, "Damage yemedin");
 		return Plugin_Handled;
 	}

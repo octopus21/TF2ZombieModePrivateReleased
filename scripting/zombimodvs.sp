@@ -126,6 +126,7 @@ Bakarım :D
 #include <sdkhooks>
 #include <clientprefs>
 
+static String:KVPath[PLATFORM_MAX_PATH];
 //ConVars
 new Handle:zm_tDalgasuresi = INVALID_HANDLE;
 new Handle:zm_tHazirliksuresi = INVALID_HANDLE;
@@ -350,8 +351,8 @@ public OnPluginStart()
 	AddCommandListener(BlockedCommandsteam, "jointeam");
 	//Directories
 	//CreateDirectory("/addons/sourcemod/data/zombiprops", 0, false, NULL_STRING);
-	//BuildPath(Path_SM, KvValue, sizeof(KvValue), "data/zombiprops/props.txt");
-	
+	CreateDirectory("addons/sourcemod/data/ZombiVault", 3);
+	BuildPath(Path_SM, KVPath, sizeof(KVPath), "data/ZombiVault/vault.txt");
 	LoadTranslations("tf2zombiemodvs.phrases");
 }
 public Action:OnGetMaxHealth(client, &maxhealth)
@@ -1006,7 +1007,7 @@ izleyicikontrolu()
 {
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && TF2_GetClientTeam(i) == TFTeam_Spectator && g_bOyun)
+		if (IsClientInGame(i) && GetClientTeam(i) < 1 && g_bOyun)
 		{
 			ChangeClientTeam(i, 3);
 			TF2_SetPlayerClass(i, TFClass_Scout);
@@ -1298,12 +1299,36 @@ stock GetWeaponIndex(iWeapon)
 //-------------- Vault----------------------
 //KAYITLI DATA
 
-KayitliKullanicilar(client) {
-	//new client = GetClientOfUserId(client);
+public KayitliKullanicilar(client) {
+	g_iVaultKullanicilar[client] = false; //CIZZZZ
+	new Handle:DB = CreateKeyValues("VaultInfo");
+	FileToKeyValues(DB, KVPath);
 	new String:sClientAuth[128];
 	GetClientAuthId(client, AuthId_Steam2, sClientAuth, sizeof(sClientAuth));
-	PrintToServer("%s", sClientAuth);
-	//PrintToServer("%s", sClientAuth);
+	if (KvJumpToKey(DB, sClientAuth, true)) {
+		new String:name[MAX_NAME_LENGTH], String:temp_name[MAX_NAME_LENGTH], String:temp_userid[128];
+		GetClientName(client, name, sizeof(name));
+		KvGetString(DB, "name", temp_name, sizeof(temp_name), " ");
+		KvGetString(DB, "userid", temp_userid, sizeof(temp_userid), " ");
+		new donatorStatus = KvGetNum(DB, "donator");
+		KvSetString(DB, "name", name);
+		KvSetString(DB, "userid", sClientAuth);
+		//KvSetNum(DB, "donator", 0);
+		if (StrEqual(temp_userid, sClientAuth)) {
+			if (donatorStatus == 1) {
+				g_iVaultKullanicilar[client] = true;
+			}
+		}
+		if (!g_iVaultKullanicilar[client]) {
+			PrintToServer("Normal:%s", sClientAuth);
+		} else {
+			PrintToServer("Donator:%s", sClientAuth);
+		}
+		KvRewind(DB);
+		KeyValuesToFile(DB, KVPath);
+		CloseHandle(DB);
+	}
+	/*
 	if (StrEqual(sClientAuth, "STEAM_0:0:81591956", false)) {  // Devil
 		g_iVaultKullanicilar[client] = true; //DOKUNMA!
 		PrintToServer("Donator:%s", sClientAuth);
@@ -1311,10 +1336,12 @@ KayitliKullanicilar(client) {
 	else if (StrEqual(sClientAuth, "STEAM_0:0:95142811", false)) {  // Berke
 		g_iVaultKullanicilar[client] = true;
 		PrintToServer("Donator:%s", sClientAuth);
-	} else {
-		g_iVaultKullanicilar[client] = false; //CIZZZZ
-		PrintToServer("Normal:%s", sClientAuth);
 	}
+	else if (StrEqual(sClientAuth, "STEAM_0:0:94605939", false)) {  //STEAM_0:0:94605939 Buğrahan
+		g_iVaultKullanicilar[client] = true;
+		PrintToServer("Donator:%s", sClientAuth);
+	}
+	*/
 }
 public Action:say(client, args)
 {
@@ -1330,10 +1357,13 @@ public Action:say(client, args)
 			return Plugin_Handled;
 		}
 		else if (StrEqual(sClientAuth, "STEAM_0:0:95142811", false)) {
-			PrintToChatAll("\x0700FF00[ Gay Faggot ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(XX)
+			PrintToChatAll("\x0700FF00[ Gay Faggot ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(Berke)
 			return Plugin_Handled;
 		}
-		
+		else if (StrEqual(sClientAuth, "STEAM_0:0:94605939", false)) {
+			PrintToChatAll("\x0700FF00[ Gay Faggot ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(Buğrahan)
+			return Plugin_Handled;
+		}
 		return Plugin_Handled;
 		//PrintToChatAll("\x0700FF00[ Donator ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Kendilerine Özel Tag ayarlarız.
 	} else {

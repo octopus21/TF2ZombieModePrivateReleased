@@ -157,7 +157,7 @@ public zombishop(Handle menu, MenuAction action, client, item)
 	if (action == MenuAction_Select)
 	{
 		switch (item) {
-			case 1: {
+			case 0: {
 				if (g_iHumanCreditProgress[client] >= 25) {
 					g_iHumanCreditProgress[client] = g_iHumanCreditProgress[client] - 25;
 					if (g_iMineCount[client] < 15) {
@@ -214,15 +214,17 @@ public Action:Listener_Voice(client, const String:command[], argc) {
 	if (StrEqual(arguments, "0 0")) {
 		if (GetClientTeam(client) == 3) {
 			SetClientOverlay(client, " "); //effects/tp_refract
-			PerformFade(client, 500, { 0, 255, 0, 125 } );
+			PerformFade(client, 500, { 0, 255, 0, 50 } );
 			clientTimer[client] = CreateTimer(10.0, timer_Fade, client, TIMER_FLAG_NO_MAPCHANGE);
 			EmitSoundToAll(SND_ZOMBIDLE01, client, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
 			return Plugin_Handled; // continue || none
 		}
 	} else if (StrEqual(arguments, "0 1") || StrEqual(arguments, "0 2") || StrEqual(arguments, "0 3") || StrEqual(arguments, "0 4") || StrEqual(arguments, "0 5") || StrEqual(arguments, "0 6") || StrEqual(arguments, "0 7")) {
-		EmitSoundToAll(SND_ZOMBIDLE02, client, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
-		SetClientOverlay(client, " ");
-		return Plugin_Handled; //continue
+		if (g_bZombi[client]) {
+			EmitSoundToAll(SND_ZOMBIDLE02, client, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
+			SetClientOverlay(client, " ");
+			return Plugin_Handled; //continue
+		}
 	}
 	return Plugin_Continue;
 }
@@ -668,23 +670,17 @@ public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, flo
 {
 	AcceptEntityInput(ent2, "TurnOff");
 	AcceptEntityInput(ent2, "TurnOn");
-	//new owner = GetEntPropEnt(ent2, Prop_Data, "m_hOwnerEntity");
 	if (g_bZombi[iActivator]) {
-		//UnhookSingleEntityOutput(ent2, "OnBreak", mineBreak);
 		AcceptEntityInput(ent2, "break");
 		AcceptEntityInput(ent2, "kill");
 		PrintToConsole(iActivator, "touch zombie");
-		//DispatchKeyValue(ent2, "TouchType", "4");
 	} else {
-		//AcceptEntityInput(ent2, "kill");
-		//AcceptEntityInput(ent2, "TurnOff");
 		PrintToConsole(iActivator, "touch insan");
-		//UnhookSingleEntityOutput(ent2, "OnBreak", mineBreak);
-		SDKHook(iActivator, SDKHook_OnTakeDamage, OnTakeDamage2);
+		return Plugin_Handled;
 	}
 	float vOrigin[3];
 	GetClientAbsOrigin(iActivator, vOrigin);
-	return;
+	return Plugin_Continue;
 }
 
 
@@ -701,31 +697,6 @@ public Action:OnTakeDamage1(victim, &attacker, &inflictor, &Float:damage, &damag
 	}
 	if (GetClientTeam(victim) == GetClientTeam(attacker)) {
 		PrintToChat(victim, "Damage vermedin (1)");
-		return Plugin_Handled;
-	}
-	return Plugin_Continue;
-}
-
-public Action:OnTakeDamage2(victim, &attacker, &inflictor, &Float:damage, &damagetype)
-{
-	/*
-	if (g_bMine[attacker]) { //If the attacker is not zombie and then is not valid client then probably it's the mine entity.
-		if (!g_bZombi[victim]) {
-			PrintToChat(victim, "Damage yemedin.");
-			return Plugin_Handled;
-	        }//damage = 0;
-		return Plugin_Handled;
-	}
-	*/
-	if (victim == attacker) {
-		if (!g_bZombi[victim]) {
-			
-		}
-		PrintToChat(victim, "Damage yemedin");
-		return Plugin_Handled;
-	}
-	if (GetClientTeam(victim) == GetClientTeam(attacker)) {
-		PrintToChat(victim, "Damage vermedin");
 		return Plugin_Handled;
 	}
 	return Plugin_Continue;

@@ -1,0 +1,14 @@
+"VaultInfo"
+{
+	"STEAM_0:0:81591956"
+	{
+		"name"		"Devil"
+		"userid"		"STEAM_0:0:81591956"
+		"donator"		"1"
+	}
+	"bot"
+	{
+		"userid"		"BOT"
+		"donator"		"0"
+	}
+}

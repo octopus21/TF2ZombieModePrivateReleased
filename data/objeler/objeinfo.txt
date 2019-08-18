@@ -1,0 +1,8 @@
+"proplistesi"
+{
+    "Proplar"
+    {
+        "0" "Bariyer--10--models/props_farm/wooden_barrel.mdl"--99999
+        "1" "Keyboard--10--models/props_c17/computer01_keyboard.mdl--50"
+    }
+}

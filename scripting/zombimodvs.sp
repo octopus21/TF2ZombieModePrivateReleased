@@ -18,8 +18,6 @@
 -Quickfix
 -No Knockback
 
-3)Oyun başlarken oyuncunun ekranını karartma ve korkunç bir atmosfer eklemek. (sf2)
--Eklendi :)
 
 4)Enable consumable items for zombies like bad milk jarate etc
 -Scoutun milk vb türleri aktif hale getirilebilir
@@ -30,10 +28,6 @@
 6)Let the sandman balls do more damage
 Sandman ballsı editleyelim.
 
-7)Set engi sentry level to 1 also let him to build props that can be destroyed
-
-8)Add 2x damage to sniper rifles
-Sniper Rifle damageleri iki katına çıkarılacak ya da krit ekleriz.
 
 9)Nerf the airblast speed of pyros
 Bakarım :D
@@ -51,14 +45,10 @@ Bakarım :D
 14)Medic should start with at least 40% of uber
 -Yaparız
 
-15)Level 1 sentrys firerate should be increased 33%
-- :/
 
 16)Mark the humans with mini crit (fan o war effect) when zombies hit humans
 -Yapılabilir.
 
-17)Remove melee crits from heavies
--Heavylerden değil sadece bossa veririz.
 
 18)Add 10% bullet resistence to zombies
 -Tamam bakarız (OnSpawn if zombie)
@@ -69,11 +59,6 @@ Bakarım :D
 20)Medic and sniper bows should do 25% more damage with 15% slow reload time
 -Krit var onlara zaten
 
-21)Remove gunboats from soldiers
--Gunboats?
-
-22)Rocketjumper and sticky jumper should not be allowed
--Tamam
 
 23)Zombies should jump longer than humans
 -OnSpawn if zombie
@@ -85,9 +70,6 @@ Bakarım :D
 --Zombi seçimi 15 saniye //
 --Round süresini haritanın süresiyle senkronize yap.
 --Zombiler kesinlikle %100 yavaşlamalı hasar alınca. //Eklendi
-
-
-25)Premium Oyuncuları DataBase olarak kaydet (KvString sonra da MySQL)
 
 */
 #pragma semicolon 1
@@ -183,6 +165,7 @@ public Plugin:myinfo =
 	version = PLUGIN_VERSION, 
 	url = ""
 };
+
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	if (GetEngineVersion() != Engine_TF2)
@@ -331,6 +314,8 @@ public OnPluginStart()
 	HookEvent("post_inventory_application", Event_Resupply);
 	HookEvent("round_end", Event_RoundEnd);
 	HookEvent("teamplay_round_win", Event_RoundEnd);
+	//HookEvent("player_builtobject", Event_ObjectBuilt);
+	//HookEvent("object_destroyed", Event_ObjectDestroyed);
 	RegConsoleCmd("say", say);
 	RegConsoleCmd("say_team", say);
 	//Set
@@ -370,9 +355,16 @@ public Action:OnGetMaxHealth(client, &maxhealth)
 	return Plugin_Continue;
 }
 
-//-- "[TF2] Be The Zombie" by Master Xyon
-
-//-- "[TF2] Be The Zombie" by Master Xyon
+public OnGameFrame() {  //Do not add anything to this, can cause lag.
+	new entity = -1;
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1) {
+		//SetEntProp(entity, Prop_Send, "m_iUpgradeMetal", 0);
+		SetEntPropFloat(entity, Prop_Send, "m_flModelScale", 0.75);
+		SetEntProp(entity, Prop_Send, "m_bMiniBuilding", 1);
+		//SetEntProp(entity, Prop_Send, "m_iHealth", 100);
+		//SetEntProp(entity, Prop_Send, "m_iMaxHealth", 100);
+	}
+}
 public Action:Event_Resupply(Handle:hEvent, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
@@ -528,6 +520,7 @@ public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast)
 	g_hAdvert2 = CreateTimer(220.0, yazi2, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hAdvert3 = CreateTimer(120.0, yazi4, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hAdvert4 = CreateTimer(190.0, yazi3, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	
 }
 public Action:Event_RoundEnd(Handle:hEvent, const String:strName[], bool:bDontBroadcast)
 {
@@ -592,8 +585,21 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 					decl String:classNameDemo[128];
 					if (GetEntityClassname(slotDemo, classNameDemo, sizeof(classNameDemo)) && StrContains(classNameDemo, "tf_weapon", false) != -1) {
 						switch (GetEntProp(slotDemo, Prop_Send, "m_iItemDefinitionIndex")) {
-							case 265: { TF2_RemoveWeaponSlot(client, slotDemo); } //Sticky Jumper
+							case 265: { TF2_RemoveWeaponSlot(client, 1); } //Sticky Jumper
 							default:TF2_RemoveWeaponSlot(client, slotDemo);
+						}
+					}
+				}
+			}
+			case TFClass_Soldier: {
+				new slotSoldier = GetPlayerWeaponSlot(client, 0);
+				if (IsValidEntity(slotSoldier)) {
+					decl String:classNameSoldier[128];
+					if (GetEntityClassname(slotSoldier, classNameSoldier, sizeof(classNameSoldier)) && StrContains(classNameSoldier, "tf_weapon", false) != -1) {
+						switch (GetEntProp(slotSoldier, Prop_Send, "m_iItemDefinitionIndex")) {
+							case 237: { TF2_RemoveWeaponSlot(client, 0); }
+							case 133: { TF2_RemoveWeaponSlot(client, 0); }
+							default:TF2_RemoveWeaponSlot(client, slotSoldier);
 						}
 					}
 				}
@@ -1017,19 +1023,12 @@ izleyicikontrolu()
 }
 public Action:TF2_CalcIsAttackCritical(id, weapon, String:weaponname[], &bool:result)
 {
-	new Float:size = GetEntPropFloat(id, Prop_Data, "m_flModelScale"); // Boss için
-	if (g_iVaultKullanicilar[id]) {  //Donator -- Kaydedilen Kullanıcı
-		if (GetClientTeam(id) == 2 && StrEqual(weaponname, "tf_weapon_compound_bow", false) || StrEqual(weaponname, "tf_weapon_fists", false) || StrEqual(weaponname, "tf_weapon_crossbow", false)) {
-			result = true;
-			return Plugin_Changed;
-		}
-		else if (GetClientTeam(id) == 3 && size > 1.0 && StrEqual(weaponname, "tf_weapon_fists", false)) // Boss
-		{
-			result = true;
-			return Plugin_Changed;
-		}
+	new Float:size = GetEntPropFloat(id, Prop_Data, "m_flModelScale"); // Boss için //Donator -- Kaydedilen Kullanıcı
+	if (GetClientTeam(id) == 2 && StrEqual(weaponname, "tf_weapon_compound_bow", false) || StrEqual(weaponname, "tf_weapon_sniperrifle", false) || StrEqual(weaponname, "tf_weapon_crossbow", false)) {
+		result = true;
+		return Plugin_Changed;
 	}
-	if (GetClientTeam(id) == 3 && size > 1.0 && StrEqual(weaponname, "tf_weapon_fists", false)) // Boss
+	else if (GetClientTeam(id) == 3 && size > 1.0 && StrEqual(weaponname, "tf_weapon_fists", false)) // Boss
 	{
 		result = true;
 		return Plugin_Changed;
@@ -1314,13 +1313,14 @@ public KayitliKullanicilar(client) {
 		KvSetString(DB, "name", name);
 		KvSetString(DB, "userid", sClientAuth);
 		//KvSetNum(DB, "donator", 0);
-		if (StrEqual(temp_userid, sClientAuth)) {
+		if (StrEqual(temp_userid, sClientAuth)) {  // O kullanıcıyı mı hedefledik?
 			if (donatorStatus == 1) {
 				g_iVaultKullanicilar[client] = true;
 			}
 		}
 		if (!g_iVaultKullanicilar[client]) {
 			PrintToServer("Normal:%s", sClientAuth);
+			KvSetNum(DB, "donator", 0);
 		} else {
 			PrintToServer("Donator:%s", sClientAuth);
 		}
@@ -1353,7 +1353,7 @@ public Action:say(client, args)
 	GetClientAuthId(client, AuthId_Steam2, sClientAuth, sizeof(sClientAuth));
 	if (g_iVaultKullanicilar[client]) {
 		if (StrEqual(sClientAuth, "STEAM_0:0:81591956", false)) {  //STEAM_0:0:81591956 Devil
-			PrintToChatAll("\x0700FF00[ A very kind Donator ]\x07FFCC00%N: %s", client, argx); //Özel Tag (Devil)
+			PrintToChatAll("\x0700FF00[ Developer ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag (Devil)
 			return Plugin_Handled;
 		}
 		else if (StrEqual(sClientAuth, "STEAM_0:0:95142811", false)) {
@@ -1364,7 +1364,7 @@ public Action:say(client, args)
 			PrintToChatAll("\x0700FF00[ Gay Faggot ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(Buğrahan)
 			return Plugin_Handled;
 		}
-		return Plugin_Handled;
+		return Plugin_Continue;
 		//PrintToChatAll("\x0700FF00[ Donator ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Kendilerine Özel Tag ayarlarız.
 	} else {
 		return Plugin_Continue;

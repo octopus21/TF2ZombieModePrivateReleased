@@ -12,7 +12,7 @@
 
 #define SND_MINEPUT "npc/roller/blade_cut.wav"
 #define SND_MINEACT "npc/roller/mine/rmine_blades_in2.wav"
-#define SND_ZOMBIDLE01 "npc/zombie/zombie_voice_idle1.wav" 
+#define SND_ZOMBIDLE01 "npc/zombie/zombie_voice_idle1.wav"
 #define SND_ZOMBIDLE02 "npc/zombie/zombie_voice_idle5.wav"
 #define SND_BARNACLE01 "npc/barnacle/barnacle_bark1.wav"
 
@@ -27,7 +27,7 @@
 #include <tf2>
 #include <tf2_stocks>
 #include <sdkhooks>
-#include <vaultuser>
+//#include <vaultuser> => My Stock, probably use it later.
 
 new clientTimer[MAXPLAYERS + 1];
 new Handle:g_hTimer12 = INVALID_HANDLE;
@@ -42,7 +42,7 @@ new bool:g_bStatusBleed[MAXPLAYERS + 1];
 new bool:g_bStatusManOWar[MAXPLAYERS + 1];
 new bool:g_bSlowness[MAXPLAYERS + 1];
 
-//DemiBossProgress 
+//DemiBossProgress
 new g_iDemiBossProgress[MAXPLAYERS + 1] = 0;
 new g_iHumanCreditProgress[MAXPLAYERS + 1] = 0;
 new g_iKillsAsZombi[MAXPLAYERS + 1] = 0;
@@ -63,7 +63,7 @@ int g_iMineCount[MAXPLAYERS + 1] = 0;
 
 
 
-#define ambience_1 "slender/intro.mp3" 
+#define ambience_1 "slender/intro.mp3"
 
 //new UserMsg:g_FadeUserMsgId;
 
@@ -126,6 +126,7 @@ public OnClientConnected(client) {
 }
 public Action:Test(client, args)
 {
+	/*
 	new bool:bBool[MAXPLAYERS + 1];
 	bBool[client] = VaultKullanici(client);
 	if (!bBool[client]) {
@@ -135,6 +136,8 @@ public Action:Test(client, args)
 		PrintToChat(client, "vaultedsin");
 		g_HomingEnabled[client] = true;
 	}
+	*/
+	
 	//Shop
 	Menu shop = new Menu(zombishop);
 	shop.SetTitle("Zombi Market! [Credits:%d]", g_iHumanCreditProgress[client]);
@@ -149,8 +152,8 @@ public Action:Test(client, args)
 	//g_iTekSefer[client] = 0;
 	//PrintToChat(client, "Slender Ambience:%d", g_iTekSefer[client]);
 	//PrintToChat(client, "DemiBoss: %d", g_iDemiBossProgress[client]);
-	//etMine(client);
-	PrintToChat(client, "Mayın Sayısı:%d", g_iMineCount[client]);
+	//SetMine(client);
+	//PrintHintText(client, "Mayın Sayısı:%d", g_iMineCount[client]);
 }
 public zombishop(Handle menu, MenuAction action, client, item)
 {
@@ -181,7 +184,7 @@ public zombishop(Handle menu, MenuAction action, client, item)
 }
 public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	
+	PrintToChatAll("\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombie picking up ratio is : 11,111");
 }
 public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadcast) {
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid")); //victim
@@ -189,8 +192,8 @@ public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadc
 	if (client != attacker) {
 		if (g_bZombi[attacker] && !g_bZombi[client]) {
 			g_iDemiBossProgress[attacker] = g_iDemiBossProgress[attacker] + 10;
-			PerformHudMsg(attacker, -1.0, 0.40, 3.0, "☠ Demiboss Progress ☠");
-			PrintToChat(attacker, " %: %d", g_iDemiBossProgress[attacker]);
+			PerformHudMsg(attacker, -1.0, 0.40, 3.0, "☠ Demiboss Progress ☠ + 10");
+			//PrintToChat(attacker, " : %d", g_iDemiBossProgress[attacker]);
 		}
 		else if (!g_bZombi[attacker] && g_bZombi[client]) {
 			//g_iHumanCreditProgress[attacker] = g_iHumanCreditProgress[attacker] + 5;
@@ -202,8 +205,8 @@ public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadc
 	if (g_iDemiBossProgress[attacker] > 100) {
 		g_iDemiBossProgress[attacker] = 100; //100 ü geçmesin.
 	}
-	if (g_iHumanCreditProgress[attacker] > 100) {
-		g_iHumanCreditProgress[attacker] = 100;
+	if (g_iHumanCreditProgress[attacker] > 300) {
+		g_iHumanCreditProgress[attacker] = 300;
 	}
 }
 public Action:Listener_Voice(client, const String:command[], argc) {
@@ -214,7 +217,7 @@ public Action:Listener_Voice(client, const String:command[], argc) {
 	if (StrEqual(arguments, "0 0")) {
 		if (GetClientTeam(client) == 3) {
 			SetClientOverlay(client, " "); //effects/tp_refract
-			PerformFade(client, 500, { 0, 255, 0, 50 } );
+			//PerformFade(client, 500, { 0, 255, 0, 50 } );
 			clientTimer[client] = CreateTimer(10.0, timer_Fade, client, TIMER_FLAG_NO_MAPCHANGE);
 			EmitSoundToAll(SND_ZOMBIDLE01, client, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
 			return Plugin_Handled; // continue || none
@@ -252,7 +255,7 @@ public Action:spawn(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	GetZombiStatus(client);
-	
+	//PrintToChatAll("\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombie picking up ratio is : 11,111");
 	if (g_bZombi[client]) {
 		//Balance Update 12.08.2019
 		if (ZombiSayisi() <= InsanSayisi()) {
@@ -347,22 +350,22 @@ BlindPlayer(client, iAmount)
 {
 	new iTargets[2];
 	iTargets[0] = client;
-	
+
 	new Handle:message = StartMessageEx(g_FadeUserMsgId, iTargets, 1);
 	BfWriteShort(message, 1536);
 	BfWriteShort(message, 1536);
-	
+
 	if (iAmount == 0) {
 		BfWriteShort(message, (0x0001 | 0x0010));
 	} else {
 		BfWriteShort(message, (0x0002 | 0x0008));
 	}
-	
+
 	BfWriteByte(message, 0);
 	BfWriteByte(message, 0);
 	BfWriteByte(message, 0);
 	BfWriteByte(message, iAmount);
-	
+
 	EndMessage();
 }
 */
@@ -501,7 +504,7 @@ stock GetSlotFromPlayerWeapon(iClient, iWeapon)
         }
     }
     return -1;
-}  
+}
 */
 
 
@@ -623,7 +626,7 @@ void SetMine(int client)
 	}
 	else
 	{
-		PrintHintText(client, "Invalid location for Tripmine");
+		PrintHintText(client, "You cant place it here.");
 	}
 }
 
@@ -666,7 +669,7 @@ public bool FilterAll(int entity, int contentsMask)
 }
 
 public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, float delay)
-//public Action SDKCallback_TouchPost_MineLaser(int iEnt, int iActivator) 
+//public Action SDKCallback_TouchPost_MineLaser(int iEnt, int iActivator)
 {
 	AcceptEntityInput(ent2, "TurnOff");
 	AcceptEntityInput(ent2, "TurnOn");
@@ -709,4 +712,4 @@ stock bool:IsValidClient(client, bool:nobots = true)
 		return false;
 	}
 	return IsClientInGame(client);
-} 
+}

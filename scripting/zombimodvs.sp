@@ -84,7 +84,7 @@ Bakarım :D
 #define FFADE_PURGE         (0x0010)        // Yenisi ile değiştir
 
 #define PLUGIN_AUTHOR "Devil"
-#define PLUGIN_VERSION "1.03"
+#define PLUGIN_VERSION "1.10" //Private version ++
 #define PLAYERBUILTOBJECT_ID_DISPENSER 0
 #define PLAYERBUILTOBJECT_ID_TELENT    1
 #define PLAYERBUILTOBJECT_ID_TELEXIT   2
@@ -107,6 +107,7 @@ Bakarım :D
 #include <tf2_stocks>
 #include <sdkhooks>
 #include <clientprefs>
+#include <steamtools>
 
 static String:KVPath[PLATFORM_MAX_PATH];
 //ConVars
@@ -150,8 +151,9 @@ new bool:g_iNonPreBoss[MAXPLAYERS + 1];
 new bool:g_bNotHurt[MAXPLAYERS + 1] = true;
 new bool:g_bZombiEscape = false;
 
-new g_iSpeedTimer[MAXPLAYERS + 1];
+//new g_iSpeedTimer[MAXPLAYERS + 1];
 
+new clientBuffTimerRemoval[MAXPLAYERS + 1];
 
 
 //KvStrings
@@ -178,6 +180,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 //Ayarların yüklenmesi.
 public OnMapStart()
 {
+	Steam_SetGameDescription("Zombie Escape / Custom");
 	PrecacheSound("npc/fast_zombie/fz_scream1.wav", true);
 	PrecacheSound("npc/zombie_poison/pz_alert2.wav", true);
 	zombimod();
@@ -339,6 +342,7 @@ public OnPluginStart()
 	CreateDirectory("addons/sourcemod/data/ZombiVault", 3);
 	BuildPath(Path_SM, KVPath, sizeof(KVPath), "data/ZombiVault/vault.txt");
 	LoadTranslations("tf2zombiemodvs.phrases");
+	//Steam_SetGameDescription("Zombie Escape / Custom");
 }
 public Action:OnGetMaxHealth(client, &maxhealth)
 {
@@ -346,10 +350,14 @@ public Action:OnGetMaxHealth(client, &maxhealth)
 	{
 		if (TF2_GetClientTeam(client) == TFTeam_Blue)
 		{
-			//maxhealth = 5000;
-			maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 3; // Zombi Survival Can Formülü
-			MaxHealth[client] = maxhealth;
-			return Plugin_Handled;
+			if (g_iMapPrefixType == 6) {
+				maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 10;
+				return Plugin_Handled;
+			} else {
+				maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 3; // Zombi Survival Can Formülü
+				MaxHealth[client] = maxhealth;
+				return Plugin_Handled;
+			}
 		}
 	}
 	return Plugin_Continue;
@@ -406,8 +414,8 @@ public HookPlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
 	if (client > 0 && g_bZombiEscape && client != attacker && attacker && GetClientTeam(attacker) == 2) {
 		g_bNotHurt[client] = false;
 		//TF2_StunPlayer(client, 0.0, 0.0, TF_STUNFLAG_SLOWDOWN);
-		SetEntPropFloat(client, Prop_Send, "m_flMaxspeed", 80.0);
-		g_iSpeedTimer[client] = CreateTimer(1.0, SpeedRemoval, client, TIMER_FLAG_NO_MAPCHANGE);
+		//SetEntPropFloat(client, Prop_Send, "m_flMaxspeed", 80.0);
+		//g_iSpeedTimer[client] = CreateTimer(1.0, SpeedRemoval, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	if (GetConVarInt(zm_HealthRegenEnable) == 1 && client > 0 && clientRegenTime[client] == INVALID_HANDLE && GetClientTeam(client) == 3) {
 		clientRegenTime[client] = CreateTimer(GetConVarFloat(zm_HealthRegenTick), RegenTick, client, TIMER_REPEAT);
@@ -417,10 +425,10 @@ public Action:RegenTick(Handle:timer, any:client)
 {
 	new clientCurHealth = GetPlayerHealth(client);
 	//new Float:size = GetEntPropFloat(client, Prop_Data, "m_flModelScale");
-	if (GetClientTeam(client) == 3 && clientCurHealth < MaxHealth[client]) {
+	if (GetClientTeam(client) == 3 && clientCurHealth < MaxHealth[client] && g_iMapPrefixType != 6) {
 		SetPlayerHealth(client, clientCurHealth + GetConVarInt(zm_HealthRegenMiktar));
 	}
-	else if (GetClientTeam(client) == 3 && clientCurHealth > MaxHealth[client]) {
+	else if (GetClientTeam(client) == 3 && clientCurHealth > MaxHealth[client] && g_iMapPrefixType != 6) {
 		SetPlayerHealth(client, MaxHealth[client]);
 		KillClientTimer(client);
 	}
@@ -428,7 +436,8 @@ public Action:RegenTick(Handle:timer, any:client)
 public Action:SpeedRemoval(Handle:timer, any:client)
 {
 	TF2_StunPlayer(client, 0.0, 0.0, TF_STUNFLAG_SLOWDOWN);
-	SetEntPropFloat(client, Prop_Send, "m_flMaxspeed", 1000.0);
+	TF2_RemoveCondition(client, TFCond_SpeedBuffAlly);
+	//SetEntPropFloat(client, Prop_Send, "m_flMaxspeed", 1000.0);
 }
 SetPlayerHealth(entity, amount, bool:maxHealth = false, bool:ResetMax = false)
 {
@@ -551,6 +560,11 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 		{
 			SetEntityRenderColor(client, 0, 255, 0, 0);
 			zombi(client);
+			if (g_iMapPrefixType == 6) {
+				TF2_AddCondition(client, TFCond_SpeedBuffAlly);
+				clientBuffTimerRemoval[client] = CreateTimer(7.0, SpeedRemoval, client, TIMER_FLAG_NO_MAPCHANGE);
+				
+			}
 			if (clientRegenTime[client] != INVALID_HANDLE) {
 				KillClientTimer(client);
 			}

@@ -196,6 +196,7 @@ public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadc
 			//PrintToChat(attacker, " : %d", g_iDemiBossProgress[attacker]);
 		}
 		else if (!g_bZombi[attacker] && g_bZombi[client]) {
+			TF2_StunPlayer(client, 1.0, 0.6, TF_STUNFLAG_SLOWDOWN);
 			//g_iHumanCreditProgress[attacker] = g_iHumanCreditProgress[attacker] + 5;
 			//PerformHudMsg(attacker, -1.0, 0.40, 2.0, "☠ + 5 Credits ☠"); //-1.0 x, -1.0 y
 			//PrintToChat(attacker, " Credits: %d", g_iHumanCreditProgress[attacker]);

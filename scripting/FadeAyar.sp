@@ -49,7 +49,6 @@ new g_iKillsAsZombi[MAXPLAYERS + 1] = 0;
 new g_iKillsAsHuman[MAXPLAYERS + 1] = 0;
 
 new bool:g_bMine[2048] = false;
-new bool:g_HomingEnabled[MAXPLAYERS + 1] = false;
 
 //new bool:g_bMineDamage[MAXPLAYERS + 1] = false;
 
@@ -126,34 +125,22 @@ public OnClientConnected(client) {
 }
 public Action:Test(client, args)
 {
-	/*
-	new bool:bBool[MAXPLAYERS + 1];
-	bBool[client] = VaultKullanici(client);
-	if (!bBool[client]) {
-		PrintToChat(client, "vaulted değil");
-		g_HomingEnabled[client] = false;
-	} else {
-		PrintToChat(client, "vaultedsin");
-		g_HomingEnabled[client] = true;
-	}
-	*/
-	
 	//Shop
-	Menu shop = new Menu(zombishop);
-	shop.SetTitle("Zombi Market! [Credits:%d]", g_iHumanCreditProgress[client]);
-	shop.AddItem("1", "LaserMine => [25  Credits]");
-	shop.ExitButton = true;
-	//shop.Display(client, 100);
 	if (!g_bZombi[client]) {
+		Menu shop = new Menu(zombishop);
+		shop.SetTitle("Human Market! [Credits:%d]", g_iHumanCreditProgress[client]);
+		shop.AddItem("1", "LaserMine => [25  Credits]");
+		shop.ExitButton = true;
 		shop.Display(client, 100);
+	} else {
+		Menu shopZom = new Menu(zomshop);
+		shopZom.SetTitle("Zombi Market! [DemiBoss Credits: %d]", g_iDemiBossProgress[client]);
+		shopZom.AddItem("1", "Speed Boost for 15 secs => [5 Credits]");
+		shopZom.AddItem("2", "Crit Boost for 10 secs => [10 Credits]");
+		shopZom.AddItem("3", "Be Boss! => [100 Credits]");
+		shopZom.ExitButton = true;
+		shopZom.Display(client, 100);
 	}
-	//SetMine(client);
-	
-	//g_iTekSefer[client] = 0;
-	//PrintToChat(client, "Slender Ambience:%d", g_iTekSefer[client]);
-	//PrintToChat(client, "DemiBoss: %d", g_iDemiBossProgress[client]);
-	//SetMine(client);
-	//PrintHintText(client, "Mayın Sayısı:%d", g_iMineCount[client]);
 }
 public zombishop(Handle menu, MenuAction action, client, item)
 {
@@ -182,6 +169,40 @@ public zombishop(Handle menu, MenuAction action, client, item)
 		CloseHandle(menu);
 	}
 }
+public zomshop(Handle menu, MenuAction action, client, item)
+{
+	if (action == MenuAction_Select)
+	{
+		switch (item) {
+			case 0: {
+				if (g_iDemiBossProgress[client >= 5]) {
+					g_iDemiBossProgress[client] = g_iDemiBossProgress[client] - 5;
+					if (g_bZombi[client]) {
+						TF2_AddCondition(client, TFCond_SpeedBuffAlly);
+						clientTimer[client] = CreateTimer(15.0, timerConditionRemover, client, TIMER_FLAG_NO_MAPCHANGE);
+					} else {
+						PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCHumans can't apply for boosts.");
+					}
+				} else {
+					PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCNot enough zombie credits.");
+				}
+			}
+			case 1: {
+				PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCCurrently in progress. You're credits returned.");
+			}
+			case 2: {
+				PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCCurrently in progress. You're credits returned.");
+			}
+		}
+	} else if (action == MenuAction_End) {
+		CloseHandle(menu);
+	}
+}
+public Action:timerConditionRemover(Handle:timer, any:client) {
+	if (TF2_IsPlayerInCondition(client, TFCond_SpeedBuffAlly)) {
+		TF2_RemoveCondition(client, TFCond_SpeedBuffAlly);
+	}
+}
 public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	PrintToChatAll("\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombie picking up ratio is : 11,111");
@@ -197,9 +218,8 @@ public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadc
 		}
 		else if (!g_bZombi[attacker] && g_bZombi[client]) {
 			TF2_StunPlayer(client, 1.0, 0.6, TF_STUNFLAG_SLOWDOWN);
-			//g_iHumanCreditProgress[attacker] = g_iHumanCreditProgress[attacker] + 5;
-			//PerformHudMsg(attacker, -1.0, 0.40, 2.0, "☠ + 5 Credits ☠"); //-1.0 x, -1.0 y
-			//PrintToChat(attacker, " Credits: %d", g_iHumanCreditProgress[attacker]);
+			g_iHumanCreditProgress[attacker] = g_iHumanCreditProgress[attacker] + 1;
+			PerformHudMsg(attacker, -1.0, 0.40, 2.0, "☠ + 1 Credits ☠"); //-1.0 x, -1.0 y
 		}
 	}
 	

@@ -150,7 +150,7 @@ new g_iSebep; //1 Disabled , 2 sadece zm (onlyzm)
 new bool:g_iNonPreBoss[MAXPLAYERS + 1];
 new bool:g_bNotHurt[MAXPLAYERS + 1] = true;
 new bool:g_bZombiEscape = false;
-
+new bool:g_bBossZombi[MAXPLAYERS + 1];
 //new g_iSpeedTimer[MAXPLAYERS + 1];
 
 new clientBuffTimerRemoval[MAXPLAYERS + 1];
@@ -339,10 +339,19 @@ public OnPluginStart()
 	AddCommandListener(BlockedCommandsteam, "jointeam");
 	//Directories
 	//CreateDirectory("/addons/sourcemod/data/zombiprops", 0, false, NULL_STRING);
-	CreateDirectory("addons/sourcemod/data/ZombiVault", 3);
-	BuildPath(Path_SM, KVPath, sizeof(KVPath), "data/ZombiVault/vault.txt");
+	//CreateDirectory("addons/sourcemod/data/zombivault1", 511);
+	BuildPath(Path_SM, KVPath, sizeof(KVPath), "data/vault.txt");
 	LoadTranslations("tf2zombiemodvs.phrases");
 	//Steam_SetGameDescription("Zombie Escape / Custom");
+	if (!FileExists(KVPath)) {
+		PrintToServer("yokmus");
+		new Handle:file = OpenFile(KVPath, "w");
+		if (file == INVALID_HANDLE) {
+			PrintToServer("dosya yaratılamadı");
+			file = OpenFile(KVPath, "w");
+		}
+		//CloseHandle(file);
+	}
 }
 public Action:OnGetMaxHealth(client, &maxhealth)
 {
@@ -350,12 +359,16 @@ public Action:OnGetMaxHealth(client, &maxhealth)
 	{
 		if (TF2_GetClientTeam(client) == TFTeam_Blue)
 		{
-			if (g_iMapPrefixType == 6) {
+			if (g_iMapPrefixType == 6 && !g_bBossZombi[client]) {
 				maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 10;
 				return Plugin_Handled;
-			} else {
+			} else if (g_iMapPrefixType != 6 && !g_bBossZombi[client]) {
 				maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 3; // Zombi Survival Can Formülü
 				MaxHealth[client] = maxhealth;
+				return Plugin_Handled;
+			}
+			if (g_bBossZombi[client]) {
+				maxhealth = 3250;
 				return Plugin_Handled;
 			}
 		}
@@ -425,10 +438,10 @@ public Action:RegenTick(Handle:timer, any:client)
 {
 	new clientCurHealth = GetPlayerHealth(client);
 	//new Float:size = GetEntPropFloat(client, Prop_Data, "m_flModelScale");
-	if (GetClientTeam(client) == 3 && clientCurHealth < MaxHealth[client] && g_iMapPrefixType != 6) {
+	if (GetClientTeam(client) == 3 && clientCurHealth < MaxHealth[client] && g_iMapPrefixType != 6 && !g_bBossZombi[client]) {
 		SetPlayerHealth(client, clientCurHealth + GetConVarInt(zm_HealthRegenMiktar));
 	}
-	else if (GetClientTeam(client) == 3 && clientCurHealth > MaxHealth[client] && g_iMapPrefixType != 6) {
+	else if (GetClientTeam(client) == 3 && clientCurHealth > MaxHealth[client] && g_iMapPrefixType != 6 && !g_bBossZombi[client]) {
 		SetPlayerHealth(client, MaxHealth[client]);
 		KillClientTimer(client);
 	}
@@ -747,12 +760,12 @@ bosszombi(client)
 {
 	if (client > 0 && IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) == 3) {
 		//client = g_iChoosen[client];
+		g_bBossZombi[client] = true;
 		TF2_SetPlayerClass(client, TFClass_Heavy);
 		TF2_RespawnPlayer(client);
 		SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.5);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", 1);
 		SetEntityRenderColor(client, 255, 0, 0, 0);
-		
 		EmitSoundToAll("npc/zombie_poison/pz_alert2.wav");
 		
 		if (!g_iVaultKullanicilar[client]) {
@@ -769,10 +782,10 @@ zombi(client)
 {
 	if (client > 0 && IsClientInGame(client))
 	{
+		g_bBossZombi[client] = false;
 		SetEntProp(client, Prop_Send, "m_lifeState", 2);
 		ChangeClientTeam(client, 3);
 		SetEntProp(client, Prop_Send, "m_lifeState", 0);
-		//TF2_RespawnPlayer(client);
 		SetEntityRenderColor(client, 0, 255, 0, 0);
 		if (g_bZombiEscape) {
 			if (g_bNotHurt[client]) {
@@ -780,7 +793,6 @@ zombi(client)
 			} else {
 				TF2_RemoveCondition(client, TFCond_SpeedBuffAlly);
 			}
-			//TF2_RespawnPlayer(client);
 		}
 	}
 	CreateTimer(0.1, silah, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -1037,12 +1049,11 @@ izleyicikontrolu()
 }
 public Action:TF2_CalcIsAttackCritical(id, weapon, String:weaponname[], &bool:result)
 {
-	new Float:size = GetEntPropFloat(id, Prop_Data, "m_flModelScale"); // Boss için //Donator -- Kaydedilen Kullanıcı
 	if (GetClientTeam(id) == 2 && StrEqual(weaponname, "tf_weapon_compound_bow", false) || StrEqual(weaponname, "tf_weapon_sniperrifle", false) || StrEqual(weaponname, "tf_weapon_crossbow", false)) {
 		result = true;
 		return Plugin_Changed;
 	}
-	else if (GetClientTeam(id) == 3 && size > 1.0 && StrEqual(weaponname, "tf_weapon_fists", false)) // Boss
+	else if (GetClientTeam(id) == 3 && g_bBossZombi[id] && StrEqual(weaponname, "tf_weapon_fists", false)) // Boss
 	{
 		result = true;
 		return Plugin_Changed;
@@ -1318,6 +1329,7 @@ public KayitliKullanicilar(client) {
 	FileToKeyValues(DB, KVPath);
 	new String:sClientAuth[128];
 	GetClientAuthId(client, AuthId_Steam2, sClientAuth, sizeof(sClientAuth));
+	PrintToServer(KVPath);
 	if (KvJumpToKey(DB, sClientAuth, true)) {
 		new String:name[MAX_NAME_LENGTH], String:temp_name[MAX_NAME_LENGTH], String:temp_userid[128];
 		GetClientName(client, name, sizeof(name));
@@ -1326,7 +1338,6 @@ public KayitliKullanicilar(client) {
 		new donatorStatus = KvGetNum(DB, "donator");
 		KvSetString(DB, "name", name);
 		KvSetString(DB, "userid", sClientAuth);
-		//KvSetNum(DB, "donator", 0);
 		if (StrEqual(temp_userid, sClientAuth)) {  // O kullanıcıyı mı hedefledik?
 			if (donatorStatus == 1) {
 				g_iVaultKullanicilar[client] = true;
@@ -1342,20 +1353,6 @@ public KayitliKullanicilar(client) {
 		KeyValuesToFile(DB, KVPath);
 		CloseHandle(DB);
 	}
-	/*
-	if (StrEqual(sClientAuth, "STEAM_0:0:81591956", false)) {  // Devil
-		g_iVaultKullanicilar[client] = true; //DOKUNMA!
-		PrintToServer("Donator:%s", sClientAuth);
-	}
-	else if (StrEqual(sClientAuth, "STEAM_0:0:95142811", false)) {  // Berke
-		g_iVaultKullanicilar[client] = true;
-		PrintToServer("Donator:%s", sClientAuth);
-	}
-	else if (StrEqual(sClientAuth, "STEAM_0:0:94605939", false)) {  //STEAM_0:0:94605939 Buğrahan
-		g_iVaultKullanicilar[client] = true;
-		PrintToServer("Donator:%s", sClientAuth);
-	}
-	*/
 }
 public Action:say(client, args)
 {
@@ -1375,7 +1372,7 @@ public Action:say(client, args)
 			return Plugin_Handled;
 		}
 		else if (StrEqual(sClientAuth, "STEAM_0:0:94605939", false)) {
-			PrintToChatAll("\x0700FF00[ Gay Faggot ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(Buğrahan)
+			PrintToChatAll("\x0700FF00[ Superadmin ]\x07FFCC00%N: \x07FF0099%s", client, argx); //Özel Tag(Buğrahan)
 			return Plugin_Handled;
 		}
 		return Plugin_Continue;

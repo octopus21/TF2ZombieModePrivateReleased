@@ -84,7 +84,7 @@ Bakarım :D
 #define FFADE_PURGE         (0x0010)        // Yenisi ile değiştir
 
 #define PLUGIN_AUTHOR "Devil"
-#define PLUGIN_VERSION "1.10" //Private version ++
+#define PLUGIN_VERSION "1.11" //Private version ++
 #define PLAYERBUILTOBJECT_ID_DISPENSER 0
 #define PLAYERBUILTOBJECT_ID_TELENT    1
 #define PLAYERBUILTOBJECT_ID_TELEXIT   2
@@ -154,6 +154,9 @@ new bool:g_bBossZombi[MAXPLAYERS + 1];
 //new g_iSpeedTimer[MAXPLAYERS + 1];
 
 new clientBuffTimerRemoval[MAXPLAYERS + 1];
+new g_iZomTeamIndex;
+new g_iHumTeamIndex;
+
 
 
 //KvStrings
@@ -226,6 +229,7 @@ public OnMapStart()
 		g_bEnabled = true;
 		ZomEnableDisable();
 	}
+	logGameRuleTeamRegister();
 }
 public OnMapEnd()
 {
@@ -241,23 +245,23 @@ public OnMapEnd()
 public OnClientPutInServer(id)
 {
 	KayitliKullanicilar(id);
-	if (g_bOyun && g_bEnabled) {
-		ChangeClientTeam(id, 3);
+	if (g_bOyun && g_bEnabled && IsClientInGame(id)) {
+		ChangeClientTeam(id, g_iZomTeamIndex); //Move Zombie, id
+		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else if (!g_bOyun && g_bEnabled && IsClientInGame(id)) {
+		ChangeClientTeam(id, g_iHumTeamIndex);
+		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	SDKHook(id, SDKHook_OnTakeDamage, OnTakeDamage);
 	if (g_bEnabled) {
 		SDKHook(id, SDKHook_GetMaxHealth, OnGetMaxHealth);
 	}
-	if (id > 0 && IsValidClient(id) && IsClientInGame(id) && g_bOyun && TakimdakiOyuncular(3) > 0)
-	{
-		ChangeClientTeam(id, 3);
-		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
-	}
 }
 public OnClientAuthorized(id) {
-	if (id > 0 && IsValidClient(id) && IsClientInGame(id) && g_bOyun && TakimdakiOyuncular(3) > 0)
+	if (id > 0 && IsClientInGame(id) && g_bOyun && TakimdakiOyuncular(g_iZomTeamIndex) > 0)
 	{
-		ChangeClientTeam(id, 3);
+		ChangeClientTeam(id, g_iZomTeamIndex); //Move Zombie, id
 		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
@@ -357,7 +361,7 @@ public Action:OnGetMaxHealth(client, &maxhealth)
 {
 	if (client > 0 && client <= MaxClients)
 	{
-		if (TF2_GetClientTeam(client) == TFTeam_Blue)
+		if (GetClientTeam(client) == g_iZomTeamIndex) //Zombie, client
 		{
 			if (g_iMapPrefixType == 6 && !g_bBossZombi[client]) {
 				maxhealth = g_maxHealth[TF2_GetPlayerClass(client)] * 10;
@@ -389,7 +393,7 @@ public OnGameFrame() {  //Do not add anything to this, can cause lag.
 public Action:Event_Resupply(Handle:hEvent, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-	if (client > 0 && client && IsClientInGame(client) && IsPlayerAlive(client) && TF2_GetClientTeam(client) == TFTeam_Blue)
+	if (client > 0 && client && IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) == g_iZomTeamIndex) //Zombie, client
 	{
 		zombi(client); //Oyuncular resupply cabinete dokunduğu zaman silahlarını tekrar silmek için. (Zombilerin)
 	}
@@ -408,12 +412,12 @@ public HookPlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
 	if (client > 0 && GetEventInt(event, "death_flags") & 32)
 		return;
 	if (client > 0 && GetConVarInt(zm_hTekvurus) == 1)
-		if (client != attacker && attacker && TF2_GetPlayerClass(attacker) != TFClass_Scout && GetClientTeam(attacker) != 2 && GetClientTeam(attacker) != 1) {
+		if (client != attacker && attacker && TF2_GetPlayerClass(attacker) != TFClass_Scout && GetClientTeam(attacker) == g_iZomTeamIndex) {  //Zombie, attacker
 		zombi(client);
 	}
 	if (client > 0 && GetConVarInt(zm_StatusAyari) == 1)
 	{
-		if (client != attacker && attacker && GetClientTeam(attacker) == 3)
+		if (client != attacker && attacker && GetClientTeam(attacker) == g_iZomTeamIndex) //Zombie, attacker
 		{
 			switch (TF2_GetPlayerClass(attacker)) {
 				case TFClass_Scout: {
@@ -424,13 +428,13 @@ public HookPlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
 			}
 		}
 	}
-	if (client > 0 && g_bZombiEscape && client != attacker && attacker && GetClientTeam(attacker) == 2) {
+	if (client > 0 && g_bZombiEscape && client != attacker && attacker && GetClientTeam(attacker) == g_iHumTeamIndex) {  //Human, attacker
 		g_bNotHurt[client] = false;
 		//TF2_StunPlayer(client, 0.0, 0.0, TF_STUNFLAG_SLOWDOWN);
 		//SetEntPropFloat(client, Prop_Send, "m_flMaxspeed", 80.0);
 		//g_iSpeedTimer[client] = CreateTimer(1.0, SpeedRemoval, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	if (GetConVarInt(zm_HealthRegenEnable) == 1 && client > 0 && clientRegenTime[client] == INVALID_HANDLE && GetClientTeam(client) == 3) {
+	if (GetConVarInt(zm_HealthRegenEnable) == 1 && client > 0 && clientRegenTime[client] == INVALID_HANDLE && GetClientTeam(client) == g_iZomTeamIndex) {  //Zombie, client
 		clientRegenTime[client] = CreateTimer(GetConVarFloat(zm_HealthRegenTick), RegenTick, client, TIMER_REPEAT);
 	}
 }
@@ -438,11 +442,13 @@ public Action:RegenTick(Handle:timer, any:client)
 {
 	new clientCurHealth = GetPlayerHealth(client);
 	//new Float:size = GetEntPropFloat(client, Prop_Data, "m_flModelScale");
-	if (GetClientTeam(client) == 3 && clientCurHealth < MaxHealth[client] && g_iMapPrefixType != 6 && !g_bBossZombi[client]) {
-		SetPlayerHealth(client, clientCurHealth + GetConVarInt(zm_HealthRegenMiktar));
+	if (GetClientTeam(client) == g_iZomTeamIndex && clientCurHealth < MaxHealth[client] && g_iMapPrefixType != 6 && !g_bBossZombi[client]) {  //Zombie, client
+		//SetPlayerHealth(client, clientCurHealth + GetConVarInt(zm_HealthRegenMiktar));
+		TF2_AddCondition(client, TFCond_HalloweenQuickHeal);
 	}
-	else if (GetClientTeam(client) == 3 && clientCurHealth > MaxHealth[client] && g_iMapPrefixType != 6 && !g_bBossZombi[client]) {
-		SetPlayerHealth(client, MaxHealth[client]);
+	else if (GetClientTeam(client) == g_iZomTeamIndex && clientCurHealth > MaxHealth[client] && g_iMapPrefixType != 6 && !g_bBossZombi[client]) {
+		//SetPlayerHealth(client, MaxHealth[client]);
+		TF2_RemoveCondition(client, TFCond_HalloweenQuickHeal);
 		KillClientTimer(client);
 	}
 }
@@ -450,7 +456,6 @@ public Action:SpeedRemoval(Handle:timer, any:client)
 {
 	TF2_StunPlayer(client, 0.0, 0.0, TF_STUNFLAG_SLOWDOWN);
 	TF2_RemoveCondition(client, TFCond_SpeedBuffAlly);
-	//SetEntPropFloat(client, Prop_Send, "m_flMaxspeed", 1000.0);
 }
 SetPlayerHealth(entity, amount, bool:maxHealth = false, bool:ResetMax = false)
 {
@@ -506,11 +511,16 @@ public Action:BlockedCommandsteam(client, const String:command[], argc)
 		PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Players Cant Change Team Setup");
 		return Plugin_Handled; // Engellemeyi uygula
 	}
+	/*
+	else if (g_bEnabled && IsClientConnected(client) && IsClientInGame(client) && GetClientTeam(client) > 1 && !g_bOyun) {
+		return Plugin_Handled;
+	}
+	*/
 	return Plugin_Continue; // Eğer öyle bir olay yoksa da plugin çalışmaya devam edicek.
 }
 public Action:hook_JoinClass(client, const String:command[], argc)
 {
-	if (g_bEnabled && client > 0 && client <= MaxClients && g_bOyun && GetClientTeam(client) == 2) //Round başladığı halde oyuncular takım değiştirmeye çalışırsa engellensin
+	if (g_bEnabled && client > 0 && client <= MaxClients && g_bOyun && GetClientTeam(client) == g_iHumTeamIndex) //Human, client //Round başladığı halde oyuncular takım değiştirmeye çalışırsa engellensin
 	{
 		PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Players Cant Change Class Round");
 		return Plugin_Handled; // Engellemeyi uygula
@@ -525,8 +535,13 @@ public Action:OnSetup(Handle:event, const String:name[], bool:dontBroadcast)
 public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	g_bOyun = false; // Setup bitmeden round başlayamaz
-	g_iSetupCount = GetConVarInt(zm_tHazirliksuresi); //Setup zamanlayicisinin convarın değerini alması için
-	g_iDalgaSuresi = GetConVarInt(zm_tDalgasuresi); //Round zamanlayicisinin convarın değerini alması için
+	if (g_iMapPrefixType != 6) {
+		g_iSetupCount = GetConVarInt(zm_tHazirliksuresi); //Setup zamanlayicisinin convarın değerini alması için
+		g_iDalgaSuresi = GetConVarInt(zm_tDalgasuresi); //Round zamanlayicisinin convarın değerini alması için
+	} else {
+		g_iSetupCount = GetConVarInt(zm_tHazirliksuresi);
+		g_iDalgaSuresi = GetConVarInt(zm_tDalgasuresi) + 300;
+	}
 	g_bKazanan = false;
 	getrand = false;
 	setuptime();
@@ -557,19 +572,19 @@ public Action:Event_RoundEnd(Handle:hEvent, const String:strName[], bool:bDontBr
 public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	//KayitliKullanicilar();
-	//new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (TF2_GetClientTeam(client) == TFTeam_Blue)
+	if (GetClientTeam(client) == g_iZomTeamIndex) //Zombie, client
 	{
 		if (!g_bOyun && g_iSetupCount > 0 && g_iSetupCount <= GetConVarInt(zm_tHazirliksuresi))
 		{
+			CreateTimer(0.1, silah, client, TIMER_FLAG_NO_MAPCHANGE); //This prevents zombie team to pick up weapons while intermission.
 			SetEntProp(client, Prop_Send, "m_lifeState", 2);
-			ChangeClientTeam(client, 2);
+			ChangeClientTeam(client, g_iHumTeamIndex); //Move Human, client
 			SetEntProp(client, Prop_Send, "m_lifeState", 0);
 			TF2_RespawnPlayer(client);
+			//CreateTimer(0.1, silah, client, TIMER_FLAG_NO_MAPCHANGE); //This prevents zombie team to pick up weapons while intermission.
 			PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Player Cant Become Zombie Intermission");
 		}
-		if (g_bOyun && g_iDalgaSuresi > 0 && g_iDalgaSuresi <= GetConVarInt(zm_tDalgasuresi))
+		else if (g_bOyun && g_iDalgaSuresi > 0 && g_iDalgaSuresi <= GetConVarInt(zm_tDalgasuresi))
 		{
 			SetEntityRenderColor(client, 0, 255, 0, 0);
 			zombi(client);
@@ -652,7 +667,7 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 	{
 		return;
 	}
-	if (GetClientTeam(victim) == 2 && g_bOyun)
+	if (GetClientTeam(victim) == g_iHumTeamIndex && g_bOyun) //Human, victim
 	{
 		zombi(victim);
 		HUD(-1.0, 0.2, 6.0, 255, 0, 0, 2, "\n☠☠☠\n%N", victim);
@@ -668,17 +683,17 @@ public Action:hazirlik(Handle:timer, any:client)
 	if (g_iSetupCount <= GetConVarInt(zm_tHazirliksuresi) && g_iSetupCount > 0)
 	{
 		HUD(-1.0, 0.1, 6.0, 255, 255, 255, 1, " | Setup:%02d:%02d |", g_iSetupCount / 60, g_iSetupCount % 60); //-1.0 x, 0.2 y
-		HUD(0.42, 0.1, 1.0, 0, 255, 0, 5, "%d", TakimdakiOyuncular(3)); //0.02 x, 0.10 y
-		HUD(-0.42, 0.1, 1.0, 255, 255, 255, 6, "%d", TakimdakiOyuncular(2)); //-0.02 x, 0.10 y
+		HUD(0.42, 0.1, 1.0, 0, 255, 0, 5, "%d", TakimdakiOyuncular(g_iZomTeamIndex)); //0.02 x, 0.10 y
+		HUD(-0.42, 0.1, 1.0, 255, 255, 255, 6, "%d", TakimdakiOyuncular(g_iHumTeamIndex)); //-0.02 x, 0.10 y
 		g_iDalgaSuresi = GetConVarInt(zm_tDalgasuresi);
 		g_bOyun = false;
 	} else {
 		g_bOyun = true;
-		if (TakimdakiOyuncular(3) == 0 && TakimdakiOyuncular(2) > 9 && g_bOyun && !getrand)
+		if (TakimdakiOyuncular(g_iZomTeamIndex) == 0 && TakimdakiOyuncular(g_iHumTeamIndex) > 9 && g_bOyun && !getrand)
 			zombi(rastgelezombi()), zombi(rastgelezombi());
-		else if (TakimdakiOyuncular(3) == 0 && TakimdakiOyuncular(2) < 9 && !getrand)
+		else if (TakimdakiOyuncular(g_iZomTeamIndex) == 0 && TakimdakiOyuncular(g_iHumTeamIndex) < 9 && !getrand)
 			zombi(rastgelezombi());
-		else if (TakimdakiOyuncular(3) == 0 && TakimdakiOyuncular(2) > 20 && !getrand)
+		else if (TakimdakiOyuncular(g_iZomTeamIndex) == 0 && TakimdakiOyuncular(g_iHumTeamIndex) > 20 && !getrand)
 			zombi(rastgelezombi()), zombi(rastgelezombi()), zombi(rastgelezombi());
 	}
 }
@@ -695,8 +710,8 @@ public Action:oyun1(Handle:timer, any:id)
 		//HUD(0.02, 0.10, 1.0, 0, 255, 0, 5, "☠Zombies☠:%d", TakimdakiOyuncular(3));
 		//HUD(-0.02, 0.10, 1.0, 255, 255, 255, 6, "Humans:%d", TakimdakiOyuncular(2));
 		HUD(-1.0, 0.1, 6.0, 255, 255, 255, 1, " | Round:%02d:%02d |", g_iDalgaSuresi / 60, g_iDalgaSuresi % 60); //-1.0 x, 0.2 y
-		HUD(0.42, 0.1, 1.0, 0, 255, 0, 5, "%d", TakimdakiOyuncular(3)); //0.02 x, 0.10 y
-		HUD(-0.42, 0.1, 1.0, 255, 255, 255, 6, "%d", TakimdakiOyuncular(2)); //-0.02 x, 0.10 y
+		HUD(0.42, 0.1, 1.0, 0, 255, 0, 5, "%d", TakimdakiOyuncular(g_iZomTeamIndex)); //0.02 x, 0.10 y
+		HUD(-0.42, 0.1, 1.0, 255, 255, 255, 6, "%d", TakimdakiOyuncular(g_iHumTeamIndex)); //-0.02 x, 0.10 y
 		
 		if (g_iDalgaSuresi == GetConVarInt(zm_tDalgasuresi) - 3) {
 			setuptime();
@@ -705,29 +720,27 @@ public Action:oyun1(Handle:timer, any:id)
 			bosszombi(bosschoosing());
 			//HUD(-1.0, 0.2, 6.0, 255, 0, 0, 2, "\n☠☠☠\nBoss Zombie Came:%N\n☠☠☠", g_iChoosen[id]);
 		}
-		if (TakimdakiOyuncular(2) == 0) //2 red 3 blue
+		if (TakimdakiOyuncular(g_iHumTeamIndex) == 0) //2 red 3 blue
 		{
-			kazanantakim(3);
+			kazanantakim(g_iZomTeamIndex);
 			oyunuresetle();
 		}
 	}
 	else if (g_iDalgaSuresi <= 0 && g_bOyun)
 	{
-		if (TakimdakiOyuncular(2) > 0)
+		if (TakimdakiOyuncular(g_iHumTeamIndex) > 0)
 		{
-			kazanantakim(2);
+			kazanantakim(g_iHumTeamIndex);
 			oyunuresetle();
 		}
-		else if (TakimdakiOyuncular(2) == 0)
+		else if (TakimdakiOyuncular(g_iHumTeamIndex) == 0)
 		{
-			kazanantakim(3);
+			kazanantakim(g_iZomTeamIndex);
 			oyunuresetle();
 		}
 	}
 	return Plugin_Handled;
 }
-
-
 
 //Zombie Choosing Core
 stock rastgelezombi()
@@ -750,7 +763,7 @@ stock bosschoosing()
 	//PrintToChat(client, "Twoje punkty: %i", punkty);
 	new oyuncular[MAXPLAYERS + 1], num;
 	for (new i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == 3 && g_bOyun) {
+		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == g_iZomTeamIndex && g_bOyun) {  //Zombie, i
 			oyuncular[num++] = i;
 		}
 	}
@@ -758,12 +771,15 @@ stock bosschoosing()
 }
 bosszombi(client)
 {
-	if (client > 0 && IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) == 3) {
+	if (client > 0 && IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) == g_iZomTeamIndex) {  //Zombie, client
 		//client = g_iChoosen[client];
 		g_bBossZombi[client] = true;
 		TF2_SetPlayerClass(client, TFClass_Heavy);
 		TF2_RespawnPlayer(client);
-		SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.5);
+		//SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.5);
+		TF2_AddCondition(client, TFCond_BalloonHead);
+		TF2_AddCondition(client, TFCond_RuneVampire);
+		TF2_AddCondition(client, TFCond_HalloweenGiant);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", 1);
 		SetEntityRenderColor(client, 255, 0, 0, 0);
 		EmitSoundToAll("npc/zombie_poison/pz_alert2.wav");
@@ -784,9 +800,16 @@ zombi(client)
 	{
 		g_bBossZombi[client] = false;
 		SetEntProp(client, Prop_Send, "m_lifeState", 2);
-		ChangeClientTeam(client, 3);
+		ChangeClientTeam(client, g_iZomTeamIndex); //Move Zombie, client
 		SetEntProp(client, Prop_Send, "m_lifeState", 0);
 		SetEntityRenderColor(client, 0, 255, 0, 0);
+		//Balancing, adding some buffs for zombies. That applys on every spawn.
+		TF2_AddCondition(client, TFCond_SmallBulletResist);
+		TF2_AddCondition(client, TFCond_SmallFireResist);
+		TF2_AddCondition(client, TFCond_SmallBlastResist);
+		//TF2_AddCondition(client, TFCond_RuneVampire); //Boss Feature, but i've added this to zombies. Looks Cool lol
+		//
+		
 		if (g_bZombiEscape) {
 			if (g_bNotHurt[client]) {
 				TF2_AddCondition(client, TFCond_SpeedBuffAlly, TFCondDuration_Infinite, 0);
@@ -803,12 +826,12 @@ public Action:silah(Handle:timer, any:client)
 	{
 		for (new i = 0; i <= 5; i++)
 		{
-			if (client > 0 && i != 2 && TF2_GetClientTeam(client) == TFTeam_Blue)
+			if (client > 0 && i != 2 && GetClientTeam(client) == g_iZomTeamIndex) //Zombie, client
 			{
 				TF2_RemoveWeaponSlot(client, i);
 			}
 		}
-		if (client > 0 && TF2_GetClientTeam(client) == TFTeam_Blue)
+		if (client > 0 && GetClientTeam(client) == g_iZomTeamIndex)
 		{
 			new silah1 = GetPlayerWeaponSlot(client, 2);
 			if (IsValidEdict(silah1))
@@ -881,7 +904,7 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	new weaponId;
 	(attacker == inflictor) ? (weaponId = ClientWeapon(attacker)) : (weaponId = inflictor); // Karsilastirma ? IfTrue : IfFalse;
 	
-	if (IsValidEntity(weaponId) && GetClientTeam(attacker) == 3)
+	if (IsValidEntity(weaponId) && GetClientTeam(attacker) == g_iZomTeamIndex) //Zombie, attacker
 	{  // weaponId != -1
 		decl String:sWeapon[80];
 		sWeapon[0] = '\0';
@@ -991,11 +1014,11 @@ public Action:res(Handle:timer, any:id)
 	new oyuncu[MaxClients + 1], num;
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && GetClientTeam(i) == 3)
+		if (IsClientInGame(i) && GetClientTeam(i) == g_iZomTeamIndex) //Zombie, i
 		{
 			oyuncu[num++] = i;
 			SetEntProp(i, Prop_Send, "m_lifeState", 2);
-			ChangeClientTeam(i, 2);
+			ChangeClientTeam(i, g_iHumTeamIndex); //Move Human, i
 			SetEntProp(i, Prop_Send, "m_lifeState", 0);
 			TF2_RespawnPlayer(i);
 		}
@@ -1028,7 +1051,7 @@ sinifsayisi(siniff)
 	new iSinifNum;
 	for (new i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && TF2_GetPlayerClass(i) == siniff && TF2_GetClientTeam(i) == TFTeam_Red)
+		if (IsClientInGame(i) && TF2_GetPlayerClass(i) == siniff && GetClientTeam(i) == g_iHumTeamIndex) //Human, i
 		{
 			iSinifNum++;
 		}
@@ -1041,7 +1064,7 @@ izleyicikontrolu()
 	{
 		if (IsClientInGame(i) && GetClientTeam(i) < 1 && g_bOyun)
 		{
-			ChangeClientTeam(i, 3);
+			ChangeClientTeam(i, g_iZomTeamIndex); //Move Zombie, i
 			TF2_SetPlayerClass(i, TFClass_Scout);
 			TF2_RespawnPlayer(i);
 		}
@@ -1049,11 +1072,12 @@ izleyicikontrolu()
 }
 public Action:TF2_CalcIsAttackCritical(id, weapon, String:weaponname[], &bool:result)
 {
-	if (GetClientTeam(id) == 2 && StrEqual(weaponname, "tf_weapon_compound_bow", false) || StrEqual(weaponname, "tf_weapon_sniperrifle", false) || StrEqual(weaponname, "tf_weapon_crossbow", false)) {
+	//Projectle Weapons, Humans
+	if (GetClientTeam(id) == g_iHumTeamIndex && StrEqual(weaponname, "tf_weapon_compound_bow", false) || StrEqual(weaponname, "tf_weapon_sniperrifle", false) || StrEqual(weaponname, "tf_weapon_crossbow", false)) {
 		result = true;
 		return Plugin_Changed;
 	}
-	else if (GetClientTeam(id) == 3 && g_bBossZombi[id] && StrEqual(weaponname, "tf_weapon_fists", false)) // Boss
+	else if (GetClientTeam(id) == g_iZomTeamIndex && g_bBossZombi[id] && StrEqual(weaponname, "tf_weapon_fists", false)) // Boss
 	{
 		result = true;
 		return Plugin_Changed;
@@ -1411,4 +1435,32 @@ public Action:say(client, args)
 		result = true;
 		return Plugin_Changed;
 	}
+*/
+
+/*
+ LOGICs
+*/
+
+logGameRuleTeamRegister() {  //Registers the Team indexes (Most likely usage for OnMapStart() )
+	if (g_iMapPrefixType == 1 || g_iMapPrefixType == 2) {
+		g_iZomTeamIndex = 3; //We'll set Blue team as a zombie for those maps
+		g_iHumTeamIndex = 2; //We'll set Red team as a human for those maps
+		PrintToServer("Game Rules Changed, Zombie team is Blue, Human team is Red");
+	} //If the map is ZF or ZM 
+	else if (g_iMapPrefixType == 3 || g_iMapPrefixType == 4 || g_iMapPrefixType == 5 || g_iMapPrefixType == 6) {
+		g_iZomTeamIndex = 2; //We'll set Red team as a zombie for those maps
+		g_iHumTeamIndex = 3; //We'll set Blue team as a zombie for those maps
+		PrintToServer("Game Rules Changed, Zombie team is Red, Human team is Blue");
+	} // If the map is ZM, ZS, ZOM, ZE
+}
+/*
+logCheckTeamRules(client) {  //We're applying team rules and checking here.
+	//if (g_bOyun && g_iSetupCount <= 0 && g_iDalgaSuresi >= 0) { //If the setup is over. This prevents crashing and fucking up the game.
+	if (GetClientTeam(client) == g_iZomTeamIndex) {
+		g_bZombi[client] = true;
+	} else if (GetClientTeam(client) <= g_iHumTeamIndex) {
+		g_bZombi[client] = false;
+	}
+	//} 
+} 
 */

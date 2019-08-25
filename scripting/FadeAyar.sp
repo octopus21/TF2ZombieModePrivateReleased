@@ -33,7 +33,6 @@ new clientTimer[MAXPLAYERS + 1];
 new Handle:g_hTimer12 = INVALID_HANDLE;
 
 new g_iTekSefer[MAXPLAYERS + 1] = 0;
-new bool:g_bZombi[MAXPLAYERS + 1];
 
 //Status
 new bool:g_bStatusKor[MAXPLAYERS + 1];
@@ -49,6 +48,9 @@ new g_iKillsAsZombi[MAXPLAYERS + 1] = 0;
 new g_iKillsAsHuman[MAXPLAYERS + 1] = 0;
 
 new bool:g_bMine[2048] = false;
+new g_iHumTeamIndex;
+new g_iZomTeamIndex;
+new g_iMapPrefixType;
 
 //new bool:g_bMineDamage[MAXPLAYERS + 1] = false;
 
@@ -90,6 +92,9 @@ public OnMapStart() {
 	PrecacheSound(SND_BARNACLE01, true);
 	//g_iMineCount[MAXPLAYERS] = 0;
 	//g_iHumanCreditProgress[MAXPLAYERS] = 0;
+	zombimod();
+	logGameRuleTeamRegister();
+	//zombimod();
 }
 public OnMapEnd() {
 	//g_iTekSefer[MAXPLAYERS] = 0;
@@ -110,6 +115,7 @@ public OnPluginStart()
 	AddCommandListener(Listener_Voice, "voicemenu");
 	
 	RegConsoleCmd("sm_shop", Test);
+	LoadTranslations("tf2zombiemodvs.phrases");
 }
 public OnClientDisconnect(client) {
 	g_iTekSefer[client] = 0;
@@ -125,14 +131,16 @@ public OnClientConnected(client) {
 }
 public Action:Test(client, args)
 {
+	PrintToChat(client, "Zombie:%d", g_iZomTeamIndex);
+	PrintToChat(client, "Human:%d", g_iHumTeamIndex);
 	//Shop
-	if (!g_bZombi[client]) {
+	if (GetClientTeam(client) == g_iHumTeamIndex) {
 		Menu shop = new Menu(zombishop);
 		shop.SetTitle("Human Market! [Credits:%d]", g_iHumanCreditProgress[client]);
 		shop.AddItem("1", "LaserMine => [25  Credits]");
 		shop.ExitButton = true;
 		shop.Display(client, 100);
-	} else {
+	} else if (GetClientTeam(client) == g_iZomTeamIndex) {
 		Menu shopZom = new Menu(zomshop);
 		shopZom.SetTitle("Zombi Market! [DemiBoss Credits: %d]", g_iDemiBossProgress[client]);
 		shopZom.AddItem("1", "Speed Boost for 15 secs => [5 Credits]");
@@ -151,16 +159,16 @@ public zombishop(Handle menu, MenuAction action, client, item)
 				if (g_iHumanCreditProgress[client] >= 25) {
 					g_iHumanCreditProgress[client] = g_iHumanCreditProgress[client] - 25;
 					if (g_iMineCount[client] < 15) {
-						if (!g_bZombi[client]) {
+						if (GetClientTeam(client) == g_iHumTeamIndex) {
 							SetMine(client);
-						} else {
-							PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombies can't place mines.");
+						} else if (GetClientTeam(client) == g_iZomTeamIndex) {
+							PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Zombies can't place mines");
 						}
 					} else {
-						PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCMine limit is reached.");
+						PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Mine limit is reached");
 					}
 				} else {
-					PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCNot enough credits to buy this item!");
+					PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Not enough credits to buy this item");
 				}
 			}
 		}
@@ -175,20 +183,20 @@ public zomshop(Handle menu, MenuAction action, client, item)
 	{
 		switch (item) {
 			case 0: {
-				if (g_iDemiBossProgress[client >= 5]) {
+				if (g_iDemiBossProgress[client] >= 5) {
 					g_iDemiBossProgress[client] = g_iDemiBossProgress[client] - 5;
-					if (g_bZombi[client]) {
+					if (GetClientTeam(client) == g_iZomTeamIndex) {
 						TF2_AddCondition(client, TFCond_SpeedBuffAlly);
 						clientTimer[client] = CreateTimer(15.0, timerConditionRemover, client, TIMER_FLAG_NO_MAPCHANGE);
-					} else {
-						PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCHumans can't apply for boosts.");
+					} else if (GetClientTeam(client) == g_iHumTeamIndex) {
+						PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Humans can't apply for boosts");
 					}
 				} else {
-					PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCNot enough zombie credits.");
+					PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Not enough zombie credits");
 				}
 			}
 			case 1: {
-				PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCCurrently in progress. You're credits returned.");
+				PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Currently in progress You're credits returned");
 			}
 			case 2: {
 				PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCCurrently in progress. You're credits returned.");
@@ -205,18 +213,18 @@ public Action:timerConditionRemover(Handle:timer, any:client) {
 }
 public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	PrintToChatAll("\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombie picking up ratio is : 11,111");
+	PrintToChatAll("\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Zombie picking up ratio is  11,111");
 }
 public Action:HookPlayerHurt(Handle:hEvent, const String:name[], bool:dontBroadcast) {
 	new client = GetClientOfUserId(GetEventInt(hEvent, "userid")); //victim
 	new attacker = GetClientOfUserId(GetEventInt(hEvent, "attacker"));
 	if (client != attacker) {
-		if (g_bZombi[attacker] && !g_bZombi[client]) {
+		if (GetClientTeam(attacker) == g_iZomTeamIndex) {
 			g_iDemiBossProgress[attacker] = g_iDemiBossProgress[attacker] + 10;
 			PerformHudMsg(attacker, -1.0, 0.40, 3.0, "☠ Demiboss Progress ☠ + 10");
 			//PrintToChat(attacker, " : %d", g_iDemiBossProgress[attacker]);
 		}
-		else if (!g_bZombi[attacker] && g_bZombi[client]) {
+		else if (GetClientTeam(attacker) == g_iHumTeamIndex) {
 			TF2_StunPlayer(client, 1.0, 0.6, TF_STUNFLAG_SLOWDOWN);
 			g_iHumanCreditProgress[attacker] = g_iHumanCreditProgress[attacker] + 1;
 			PerformHudMsg(attacker, -1.0, 0.40, 2.0, "☠ + 1 Credits ☠"); //-1.0 x, -1.0 y
@@ -244,7 +252,7 @@ public Action:Listener_Voice(client, const String:command[], argc) {
 			return Plugin_Handled; // continue || none
 		}
 	} else if (StrEqual(arguments, "0 1") || StrEqual(arguments, "0 2") || StrEqual(arguments, "0 3") || StrEqual(arguments, "0 4") || StrEqual(arguments, "0 5") || StrEqual(arguments, "0 6") || StrEqual(arguments, "0 7")) {
-		if (g_bZombi[client]) {
+		if (GetClientTeam(client) == g_iZomTeamIndex) {
 			EmitSoundToAll(SND_ZOMBIDLE02, client, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
 			SetClientOverlay(client, " ");
 			return Plugin_Handled; //continue
@@ -262,7 +270,7 @@ public Action:death(Handle:event, const String:name[], bool:dontBroadcast)
 	}
 	
 	if (killed != killer) {
-		if (g_bZombi[killer]) {
+		if (GetClientTeam(killer) == g_iZomTeamIndex) {
 			g_iKillsAsZombi[killer]++;
 		} else {
 			g_iKillsAsHuman[killer]++;
@@ -275,17 +283,16 @@ public Action:death(Handle:event, const String:name[], bool:dontBroadcast)
 public Action:spawn(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	GetZombiStatus(client);
 	//PrintToChatAll("\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombie picking up ratio is : 11,111");
-	if (g_bZombi[client]) {
+	if (GetClientTeam(client) == g_iZomTeamIndex) {
 		//Balance Update 12.08.2019
 		if (ZombiSayisi() <= InsanSayisi()) {
 			
 		} //Zombilerin sayısı insanların sayısından küçük eşit ise status eklemesi yapabiliriz.
-		PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCPress 'e' to activate zombie vision");
+		PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Press 'e' to activate zombie vision");
 		//SetClientOverlay(client, "effects/tp_refract");
 	}
-	else if (!g_bZombi[client] && IsValidEntity(client) && client > 0) {
+	else if (GetClientTeam(client) == g_iHumTeamIndex && IsValidEntity(client) && client > 0) {
 		g_iTekSefer[client]++;
 		PrintToChat(client, "%d", g_iTekSefer[client]);
 		SetClientOverlay(client, " ");
@@ -324,9 +331,13 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	}
 	
 	new silahId;
-	(attacker == inflictor) ? (silahId = ClientWeapon(attacker)) : (silahId = inflictor);
+	new clientsilahId;
+	if (IsValidClient(attacker)) {
+		clientsilahId = ClientWeapon(attacker);
+	}
+	//(attacker == inflictor) ? (silahId = clientsilahId) : (silahId = inflictor);
 	
-	if (IsValidEntity(silahId) && g_bZombi[attacker]) {
+	if (IsValidEntity(silahId) && GetClientTeam(attacker) == g_iZomTeamIndex && IsValidClient(attacker)) {
 		decl String:sWeapon[80];
 		GetEntityClassname(silahId, sWeapon, 32);
 		if (StrEqual(sWeapon, "tf_weapon_bat_wood") && GetWeaponIndex(silahId) == 44) {
@@ -456,13 +467,6 @@ InsanSayisi() {
 		}
 	}
 	return (num == 0) ? 0 : g_iNsan[num];
-}
-GetZombiStatus(client) {
-	if (GetClientTeam(client) == 3) {
-		g_bZombi[client] = true;
-	} else {
-		g_bZombi[client] = false;
-	}
 }
 stock GetWeaponIndex(iWeapon)
 {
@@ -607,7 +611,6 @@ void SetMine(int client)
 		HookSingleEntityOutput(ent, "OnBreak", mineBreak, true);
 		//HookSingleEntityOutput(ent, "OnTouchedByEntity", MineLaser_OnTouch, false);
 		
-		SDKHook(ent, SDKHook_OnTakeDamage, OnTakeDamage1);
 		
 		// Create laser beam
 		int ent2 = CreateEntityByName("env_beam");
@@ -662,7 +665,7 @@ public Action TurnBeamOn(Handle timer, DataPack hData)
 	
 	if (IsValidEntity(ent))
 	{
-		if (!g_bZombi[client]) {
+		if (GetClientTeam(client) == g_iHumTeamIndex) {
 			DispatchKeyValue(ent2, "rendercolor", "0 0 255");
 		}
 		// To Do: Game-based team checks and handling.
@@ -694,7 +697,7 @@ public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, flo
 {
 	AcceptEntityInput(ent2, "TurnOff");
 	AcceptEntityInput(ent2, "TurnOn");
-	if (g_bZombi[iActivator]) {
+	if (GetClientTeam(iActivator) == g_iZomTeamIndex) {
 		AcceptEntityInput(ent2, "break");
 		AcceptEntityInput(ent2, "kill");
 		PrintToConsole(iActivator, "touch zombie");
@@ -708,24 +711,6 @@ public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, flo
 }
 
 
-public Action:OnTakeDamage1(victim, &attacker, &inflictor, &Float:damage, &damagetype)
-{
-	if (!g_bZombi[attacker]) {
-		//PrintToChat(attacker, "Damage vermedin.");
-		//damage = 0;
-		return Plugin_Handled;
-	}
-	if (victim == attacker) {
-		PrintToChat(victim, "Damage yemedin (1)");
-		return Plugin_Handled;
-	}
-	if (GetClientTeam(victim) == GetClientTeam(attacker)) {
-		PrintToChat(victim, "Damage vermedin (1)");
-		return Plugin_Handled;
-	}
-	return Plugin_Continue;
-}
-
 stock bool:IsValidClient(client, bool:nobots = true)
 {
 	if (client <= 0 || client > MaxClients || !IsClientConnected(client) || (nobots && IsFakeClient(client)) || g_bMine[client])
@@ -734,3 +719,39 @@ stock bool:IsValidClient(client, bool:nobots = true)
 	}
 	return IsClientInGame(client);
 }
+
+logGameRuleTeamRegister() {  //Registers the Team indexes (Most likely usage for OnMapStart() )
+	if (g_iMapPrefixType == 1 || g_iMapPrefixType == 2) {
+		g_iZomTeamIndex = 3; //We'll set Blue team as a zombie for those maps
+		g_iHumTeamIndex = 2; //We'll set Red team as a human for those maps
+	} //If the map is ZF or ZM 
+	else if (g_iMapPrefixType == 3 || g_iMapPrefixType == 4 || g_iMapPrefixType == 5 || g_iMapPrefixType == 6) {
+		g_iZomTeamIndex = 2; //We'll set Red team as a zombie for those maps
+		g_iHumTeamIndex = 3; //We'll set Blue team as a zombie for those maps
+	} // If the map is ZM, ZS, ZOM, ZE
+}
+zombimod()
+{
+	g_iMapPrefixType = 0;
+	decl String:mapv[32];
+	GetCurrentMap(mapv, sizeof(mapv));
+	if (!StrContains(mapv, "zf_", false)) {
+		g_iMapPrefixType = 1;
+	}
+	else if (!StrContains(mapv, "szf_", false)) {
+		g_iMapPrefixType = 2;
+	}
+	else if (!StrContains(mapv, "zm_", false)) {
+		g_iMapPrefixType = 3;
+	}
+	else if (!StrContains(mapv, "zom_", false)) {
+		g_iMapPrefixType = 4;
+	}
+	else if (!StrContains(mapv, "zs_", false)) {
+		g_iMapPrefixType = 5;
+	}
+	else if (!StrContains(mapv, "ze_", false)) {
+		g_iMapPrefixType = 6;
+		//PrintToServer("\n\n\n\n      ZOMBIE ESCAPE MOD ON \n\n\n");
+	}
+} 

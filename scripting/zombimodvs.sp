@@ -1,5 +1,4 @@
- // ZOMBI 3
-// INSAN 2
+
 /*
 // TODO:
 1) Her zombi sınıfına özel hasar statusu (kimisi kör edecek kimisi slowlatacak)
@@ -11,11 +10,9 @@
 -- Zombiler damage yerse slowness olacak
 
 2)Boss zombi seçiminde ve özelliklerinde yeni şeyler (HasBosZombieReleased?)
--Boss zombiye +2k health
 -Regen olmayacak
 -Boss zombi seçildiğinde insan takımına Fade gönderelim.
 -Boss zombi seçimini düzelt. (Her bir insana vuruşta  ya da damage yiyince +1 boss queue puanı ekleme sistemi)
--Quickfix
 -No Knockback
 
 
@@ -29,19 +26,6 @@
 Sandman ballsı editleyelim.
 
 
-9)Nerf the airblast speed of pyros
-Bakarım :D
-
-10)Zombie ratio should be 1 than 1:5 (2 zombies for 6 players)
--TAMAM
-
-11)Ullapol caber instakills the target and client him/herself
---Yapılabilir
-
-12)Zombies should be slightly faster than humans
-
-13)Zombies should slow players when hit
-
 14)Medic should start with at least 40% of uber
 -Yaparız
 
@@ -50,26 +34,8 @@ Bakarım :D
 -Yapılabilir.
 
 
-18)Add 10% bullet resistence to zombies
--Tamam bakarız (OnSpawn if zombie)
-
-19)Add 5% invulnerability agains fire and explosive damage to zombies
--OnSpawn if zombie
-
-20)Medic and sniper bows should do 25% more damage with 15% slow reload time
--Krit var onlara zaten
-
-
 23)Zombies should jump longer than humans
 -OnSpawn if zombie
-
-24)Zombie Escape
---Zombilerin canı x 10 // Eklendi
---Hızları fazla //Eklendi gibimsi
---Haritaları incele. //
---Zombi seçimi 15 saniye //
---Round süresini haritanın süresiyle senkronize yap.
---Zombiler kesinlikle %100 yavaşlamalı hasar alınca. //Eklendi
 
 */
 #pragma semicolon 1
@@ -120,9 +86,9 @@ new Handle:zm_hBossZombiInterval = INVALID_HANDLE;
 new Handle:zm_enable = INVALID_HANDLE;
 new Handle:zm_hOnlyZMaps = INVALID_HANDLE;
 new Handle:zm_HealthRegenEnable = INVALID_HANDLE;
-new Handle:zm_HealthRegenMiktar = INVALID_HANDLE;
+//new Handle:zm_HealthRegenMiktar = INVALID_HANDLE;
 new Handle:zm_HealthRegenTick = INVALID_HANDLE;
-new Handle:zm_StatusAyari = INVALID_HANDLE;
+//new Handle:zm_StatusAyari = INVALID_HANDLE;
 //Timer Handles
 new Handle:g_hTimer = INVALID_HANDLE;
 new Handle:g_hSTimer = INVALID_HANDLE;
@@ -141,7 +107,7 @@ new g_iDalgaSuresi;
 new bool:g_bKazanan;
 new g_maxHealth[10] =  { 0, 125, 125, 200, 175, 150, 300, 175, 125, 125 };
 new g_iMapPrefixType = 0;
-new clientRegenTime[MAXPLAYERS + 1];
+new Handle:clientRegenTime[MAXPLAYERS + 1];
 new MaxHealth[MAXPLAYERS];
 
 
@@ -153,14 +119,9 @@ new bool:g_bZombiEscape = false;
 new bool:g_bBossZombi[MAXPLAYERS + 1];
 //new g_iSpeedTimer[MAXPLAYERS + 1];
 
-new clientBuffTimerRemoval[MAXPLAYERS + 1];
+new Handle:clientBuffTimerRemoval[MAXPLAYERS + 1];
 new g_iZomTeamIndex;
 new g_iHumTeamIndex;
-
-
-
-//KvStrings
-//static String:KvValue[PLATFORM_MAX_PATH]; //For Next Update
 
 public Plugin:myinfo = 
 {
@@ -188,6 +149,7 @@ public OnMapStart()
 	PrecacheSound("npc/zombie_poison/pz_alert2.wav", true);
 	zombimod();
 	setuptime();
+	//We are clearing the timers. That's important. DO NOT TOUCH THIS
 	ClearTimer(g_hTimer);
 	ClearTimer(g_hSTimer);
 	ClearTimer(g_hAdvert);
@@ -233,6 +195,7 @@ public OnMapStart()
 }
 public OnMapEnd()
 {
+	//We are clearing the timers. That's important. DO NOT TOUCH THIS
 	getrand = false;
 	ClearTimer(g_hTimer);
 	ClearTimer(g_hSTimer);
@@ -245,13 +208,15 @@ public OnMapEnd()
 public OnClientPutInServer(id)
 {
 	KayitliKullanicilar(id);
-	if (g_bOyun && g_bEnabled && IsClientInGame(id)) {
+	if (g_bOyun && g_bEnabled && IsClientInGame(id)) {  //Were forcing clients to join zombie team when were in roundTime (LateJoins)
 		ChangeClientTeam(id, g_iZomTeamIndex); //Move Zombie, id
 		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	else if (!g_bOyun && g_bEnabled && IsClientInGame(id)) {
+	else if (!g_bOyun && g_bEnabled && IsClientInGame(id)) {  //Were forcing clients to join human team when were in setup.
 		ChangeClientTeam(id, g_iHumTeamIndex);
 		CreateTimer(1.0, ClassSelection, id, TIMER_FLAG_NO_MAPCHANGE);
+		TF2_RespawnPlayer(id);
+		TF2_SetPlayerClass(id, TFClass_Scout);
 	}
 	SDKHook(id, SDKHook_OnTakeDamage, OnTakeDamage);
 	if (g_bEnabled) {
@@ -296,10 +261,10 @@ public OnConfigsExecuted()
 }
 public OnPluginStart()
 {
-	//Konsol Komutları
+	//Console Commands
 	RegConsoleCmd("sm_msc", msc);
 	RegConsoleCmd("sm_menu", zmenu);
-	//Convarlar
+	//Convars
 	zm_tHazirliksuresi = CreateConVar("zm_setup", "30", "Setup Timer/Hazirlik Suresi", FCVAR_NOTIFY, true, 30.0, true, 70.0);
 	zm_tDalgasuresi = CreateConVar("zm_dalgasuresi", "225", "Round Timer/Setup bittikten sonraki round zamani", FCVAR_NOTIFY, true, 120.0, true, 300.0);
 	zm_hTekvurus = CreateConVar("zm_tekvurus", "0", " 1 Damage to turn human to a zombie / Zombiler tek vurusta insanlari infekte edebilsin (1/0) 0 kapatir.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -308,10 +273,10 @@ public OnPluginStart()
 	zm_enable = CreateConVar("zm_enable", "1", "Enable The Gamemode ? / Zombi Modu Acilsin? Not:Birdahaki map degisiminde etkin olur. (0/1)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	zm_hOnlyZMaps = CreateConVar("zm_onlyzm", "1", "Only In Z' prefixed maps / Zombi Modu sadece zombi haritalarinda olsun? (0/1)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	zm_HealthRegenEnable = CreateConVar("zm_healthregen", "1", "Activate Health Regen? / Health Regen olsun mu? Zombiler hasar yediginde(0/1)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	zm_HealthRegenMiktar = CreateConVar("zm_hrmiktar", "20", "Amount of health to regen / Her belirlenen saniyede kaç HP artsın? (Zombilerin)", FCVAR_NOTIFY, true, 10.0, true, 30.0);
-	zm_StatusAyari = CreateConVar("zm_status", "1", "Apply Human status(debuff) on damage, Insan hasarı aktiflestir?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	//zm_HealthRegenMiktar = CreateConVar("zm_hrmiktar", "20", "Amount of health to regen / Her belirlenen saniyede kaç HP artsın? (Zombilerin)", FCVAR_NOTIFY, true, 10.0, true, 30.0);
+	//zm_StatusAyari = CreateConVar("zm_status", "1", "Apply Human status(debuff) on damage, Insan hasarı aktiflestir?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	zm_HealthRegenTick = CreateConVar("zm_hrtick", "3", "Health Regen Interval/ Kaç saniyede bir canı artsın?(Zombilerin)", FCVAR_NOTIFY, true, 3.0, true, 7.0);
-	//Olaylar
+	//Events
 	HookEvent("teamplay_round_start", OnRound);
 	HookEvent("player_death", OnPlayerDeath);
 	HookEvent("player_spawn", OnSpawn);
@@ -325,7 +290,7 @@ public OnPluginStart()
 	//HookEvent("object_destroyed", Event_ObjectDestroyed);
 	RegConsoleCmd("say", say);
 	RegConsoleCmd("say_team", say);
-	//Set
+	//ServerCommands
 	ServerCommand("mp_autoteambalance 0");
 	ServerCommand("mp_scrambleteams_auto 0");
 	ServerCommand("mp_teams_unbalance_limit 0");
@@ -335,18 +300,17 @@ public OnPluginStart()
 	ServerCommand("sm_cvar tf_spy_invis_time 0.5"); // Locked 
 	ServerCommand("sm_cvar tf_spy_invis_unstealth_time 0.75"); // Locked 
 	ServerCommand("sm_cvar tf_spy_cloak_no_attack_time 1.0");
-	//Tercihler
+	//Preferences, Cookies
 	MusicCookie = RegClientCookie("oyuncu_mzk_ayari", "Muzik Ayarı", CookieAccess_Public);
-	//Komut takibi
+	//Hooking the client commands
 	AddCommandListener(hook_JoinClass, "joinclass");
 	AddCommandListener(BlockedCommands, "autoteam");
 	AddCommandListener(BlockedCommandsteam, "jointeam");
 	//Directories
-	//CreateDirectory("/addons/sourcemod/data/zombiprops", 0, false, NULL_STRING);
-	//CreateDirectory("addons/sourcemod/data/zombivault1", 511);
 	BuildPath(Path_SM, KVPath, sizeof(KVPath), "data/vault.txt");
 	LoadTranslations("tf2zombiemodvs.phrases");
-	//Steam_SetGameDescription("Zombie Escape / Custom");
+	
+	//Problematic in Linux OS
 	if (!FileExists(KVPath)) {
 		PrintToServer("yokmus");
 		new Handle:file = OpenFile(KVPath, "w");
@@ -407,26 +371,13 @@ public HookPlayerHurt(Handle:event, const String:name[], bool:dontBroadcast)
 	new damagebits = GetEventInt(event, "damagebits");
 	g_bNotHurt[client] = true;
 	
-	if (client > 0 && damagebits & DMG_FALL)
+	if (client > 0 && damagebits & DMG_FALL) //If client took fall damage then don't
 		return;
-	if (client > 0 && GetEventInt(event, "death_flags") & 32)
+	if (client > 0 && GetEventInt(event, "death_flags") & 32) //If client equipped dead ringer and died from it then don't do anything to him/her.
 		return;
 	if (client > 0 && GetConVarInt(zm_hTekvurus) == 1)
 		if (client != attacker && attacker && TF2_GetPlayerClass(attacker) != TFClass_Scout && GetClientTeam(attacker) == g_iZomTeamIndex) {  //Zombie, attacker
 		zombi(client);
-	}
-	if (client > 0 && GetConVarInt(zm_StatusAyari) == 1)
-	{
-		if (client != attacker && attacker && GetClientTeam(attacker) == g_iZomTeamIndex) //Zombie, attacker
-		{
-			switch (TF2_GetPlayerClass(attacker)) {
-				case TFClass_Scout: {
-					//PerformFade(client, 5, { 0, 0, 0, 255 } );
-					//PrintCenterText(client, "TEST sınıfı tarafından hasar aldın 5 saniye boyunca körsün!");
-					//CreateTimer(performFade yok et);
-				}
-			}
-		}
 	}
 	if (client > 0 && g_bZombiEscape && client != attacker && attacker && GetClientTeam(attacker) == g_iHumTeamIndex) {  //Human, attacker
 		g_bNotHurt[client] = false;
@@ -457,6 +408,8 @@ public Action:SpeedRemoval(Handle:timer, any:client)
 	TF2_StunPlayer(client, 0.0, 0.0, TF_STUNFLAG_SLOWDOWN);
 	TF2_RemoveCondition(client, TFCond_SpeedBuffAlly);
 }
+//This is the function that we didn'T use it. DO not remove this please.
+/*
 SetPlayerHealth(entity, amount, bool:maxHealth = false, bool:ResetMax = false)
 {
 	if (maxHealth)
@@ -467,6 +420,7 @@ SetPlayerHealth(entity, amount, bool:maxHealth = false, bool:ResetMax = false)
 	
 	SetEntityHealth(entity, amount);
 }
+*/
 GetPlayerHealth(entity, bool:maxHealth = false)
 {
 	if (maxHealth)
@@ -475,6 +429,7 @@ GetPlayerHealth(entity, bool:maxHealth = false)
 	}
 	return GetEntData(entity, FindDataMapInfo(entity, "m_iHealth"));
 }
+
 KillClientTimer(client = 0, bool:all = false)
 {
 	if (all)
@@ -497,8 +452,8 @@ public Action:OnCaptured(Handle:event, const String:name[], bool:dontBroadcast)
 	new entity = GetClientOfUserId(GetEventInt(event, "userid"));
 	g_bKazanan = true;
 	new capT = GetEntProp(entity, Prop_Send, "m_iOwner");
-	kazanantakim(capT);
-	oyunuresetle(); //Control point capture edildiği zaman resetlenme gerçekleşicek
+	kazanantakim(capT); //If they capped, then we'll give them a win status.
+	oyunuresetle(); //If they capped, then we'll reset the game.
 }
 public Action:BlockedCommands(client, const String:command[], argc)
 {
@@ -545,6 +500,7 @@ public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast)
 	g_bKazanan = false;
 	getrand = false;
 	setuptime();
+	//We are clearing the timers. That's important. DO NOT TOUCH THIS
 	ClearTimer(g_hTimer);
 	ClearTimer(g_hSTimer);
 	ClearTimer(g_hAdvert);
@@ -561,6 +517,7 @@ public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast)
 }
 public Action:Event_RoundEnd(Handle:hEvent, const String:strName[], bool:bDontBroadcast)
 {
+	//We are clearing the timers. That's important. DO NOT TOUCH THIS
 	ClearTimer(g_hTimer);
 	ClearTimer(g_hSTimer);
 	ClearTimer(g_hAdvert);
@@ -663,7 +620,7 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 	new victim = GetClientOfUserId(GetEventInt(event, "userid"));
 	decl Float:flPos[3];
 	GetClientAbsOrigin(victim, flPos);
-	if (GetEventInt(event, "death_flags") & 32) // Sahte ölüm
+	if (GetEventInt(event, "death_flags") & 32) // If player gets fall damage, or died by its own
 	{
 		return;
 	}
@@ -674,6 +631,7 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 		EmitSoundToAll("npc/fast_zombie/fz_scream1.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, victim, flPos, NULL_VECTOR, true, 0.0);
 	}
 }
+//This is the setup timer.
 public Action:hazirlik(Handle:timer, any:client)
 {
 	if (ToplamOyuncular() > 0)
@@ -697,6 +655,7 @@ public Action:hazirlik(Handle:timer, any:client)
 			zombi(rastgelezombi()), zombi(rastgelezombi()), zombi(rastgelezombi());
 	}
 }
+//This is the round timer. We're doing the huge stuff here. Like setting the huds, reducing the timers, checking the win status
 public Action:oyun1(Handle:timer, any:id)
 {
 	if (ToplamOyuncular() > 0)
@@ -758,6 +717,7 @@ stock rastgelezombi()
 	
 	return (num == 0) ? 0 : oyuncular[GetRandomInt(0, num - 1)];
 }
+//Choosing random bosszombie in zombie team
 stock bosschoosing()
 {
 	//PrintToChat(client, "Twoje punkty: %i", punkty);
@@ -769,6 +729,7 @@ stock bosschoosing()
 	}
 	return (num == 0) ? 0 : oyuncular[GetRandomInt(0, num - 1)];
 }
+//Function to make player bosszombie
 bosszombi(client)
 {
 	if (client > 0 && IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) == g_iZomTeamIndex) {  //Zombie, client
@@ -794,6 +755,7 @@ bosszombi(client)
 		HUD(-1.0, 0.2, 6.0, 255, 0, 0, 2, "\n☠☠☠\nBoss Zombie Came:%N\n☠☠☠", client);
 	}
 }
+//Function to make player to zombie
 zombi(client)
 {
 	if (client > 0 && IsClientInGame(client))
@@ -820,6 +782,7 @@ zombi(client)
 	}
 	CreateTimer(0.1, silah, client, TIMER_FLAG_NO_MAPCHANGE);
 }
+//Removing the weapon of zombies.
 public Action:silah(Handle:timer, any:client)
 {
 	if (client > 0 && IsClientInGame(client))
@@ -844,7 +807,7 @@ public Action:silah(Handle:timer, any:client)
 //------
 
 
-
+//General count of clients in specific team. iTakim to set the team that we are checking.
 TakimdakiOyuncular(iTakim)
 {
 	new iSayi;
@@ -857,6 +820,7 @@ TakimdakiOyuncular(iTakim)
 	}
 	return iSayi;
 }
+//General count of clients.
 ToplamOyuncular()
 {
 	new iSayi2;
@@ -869,6 +833,7 @@ ToplamOyuncular()
 	}
 	return iSayi2;
 }
+//We are creating the entity for the round game win in order to active it. And setting the entity for specific team that we typed.
 kazanantakim(takim)
 {
 	new ent = FindEntityByClassname(-1, "team_control_point_master"); //game_round_win
@@ -882,6 +847,7 @@ kazanantakim(takim)
 		AcceptEntityInput(ent, "SetWinner");
 	}
 }
+//Hud function.
 HUD(Float:x, Float:y, Float:Sure, r, g, b, kanal, const String:message[], any:...)
 {
 	SetHudTextParams(x, y, Sure, r, g, b, 255, 0, 6.0, 0.1, 0.2);
@@ -895,6 +861,7 @@ HUD(Float:x, Float:y, Float:Sure, r, g, b, kanal, const String:message[], any:..
 		}
 	}
 }
+//Currently non used. It will be.
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
 	if (!IsValidClient(attacker))
@@ -932,6 +899,7 @@ setuptime()
 	}
 	CreateTimer(1.0, Timer_SetTimeSetup, ent1, TIMER_FLAG_NO_MAPCHANGE);
 }
+//Handling the setup timer of the map.
 public Action:Timer_SetTimeSetup(Handle:timer, any:ent1)
 {
 	if (g_iSetupCount > 0) {
@@ -944,6 +912,7 @@ public Action:Timer_SetTimeSetup(Handle:timer, any:ent1)
 		//g_iDalgaSuresi = GetEntPropFloat(ent
 	}
 }
+//Pre checking the map prefixes.
 zombimod()
 {
 	g_iMapPrefixType = 0;
@@ -996,12 +965,14 @@ zombimod()
 		//
 	}
 }
+//We are setting the inital round timer of the map itself.
 public Action:Timer_SetRoundTime(Handle:timer, any:ent1)
 {
 	SetVariantInt(GetConVarInt(zm_tDalgasuresi)); // 600 sec ~ 10min
 	AcceptEntityInput(ent1, "SetTime");
 	
 }
+//We are resseting the game. And calling it right before the round ends.
 oyunuresetle()
 {
 	if (g_bKazanan)
@@ -1009,6 +980,7 @@ oyunuresetle()
 		CreateTimer(15.0, res, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
+//We are moving the clients from to human team from here. Works only in non switch team maps.
 public Action:res(Handle:timer, any:id)
 {
 	new oyuncu[MaxClients + 1], num;
@@ -1046,6 +1018,7 @@ ClientWeapon(client)
 {
 	return GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 }
+//Checking the class count, espically engineers
 sinifsayisi(siniff)
 {
 	new iSinifNum;
@@ -1058,6 +1031,7 @@ sinifsayisi(siniff)
 	}
 	return iSinifNum;
 }
+//Checking players for spectating.
 izleyicikontrolu()
 {
 	for (new i = 1; i <= MaxClients; i++)
@@ -1070,6 +1044,7 @@ izleyicikontrolu()
 		}
 	}
 }
+//Calculating and setting the crit shots here.
 public Action:TF2_CalcIsAttackCritical(id, weapon, String:weaponname[], &bool:result)
 {
 	//Projectle Weapons, Humans
@@ -1347,6 +1322,7 @@ stock GetWeaponIndex(iWeapon)
 //-------------- Vault----------------------
 //KAYITLI DATA
 
+//We are saving the client data from here. To Vault file. This is for checking the client's current or future donator status.
 public KayitliKullanicilar(client) {
 	g_iVaultKullanicilar[client] = false; //CIZZZZ
 	new Handle:DB = CreateKeyValues("VaultInfo");
@@ -1362,7 +1338,7 @@ public KayitliKullanicilar(client) {
 		new donatorStatus = KvGetNum(DB, "donator");
 		KvSetString(DB, "name", name);
 		KvSetString(DB, "userid", sClientAuth);
-		if (StrEqual(temp_userid, sClientAuth)) {  // O kullanıcıyı mı hedefledik?
+		if (StrEqual(temp_userid, sClientAuth)) {  // Did we hit that player?
 			if (donatorStatus == 1) {
 				g_iVaultKullanicilar[client] = true;
 			}
@@ -1378,6 +1354,7 @@ public KayitliKullanicilar(client) {
 		CloseHandle(DB);
 	}
 }
+//Chat tags for specific players, you can remove this spot.
 public Action:say(client, args)
 {
 	new String:argx[512];
@@ -1445,22 +1422,11 @@ logGameRuleTeamRegister() {  //Registers the Team indexes (Most likely usage for
 	if (g_iMapPrefixType == 1 || g_iMapPrefixType == 2) {
 		g_iZomTeamIndex = 3; //We'll set Blue team as a zombie for those maps
 		g_iHumTeamIndex = 2; //We'll set Red team as a human for those maps
-		PrintToServer("Game Rules Changed, Zombie team is Blue, Human team is Red");
+		PrintToServer("\nGame Rules Changed, Zombie team is Blue, Human team is Red\n");
 	} //If the map is ZF or ZM 
 	else if (g_iMapPrefixType == 3 || g_iMapPrefixType == 4 || g_iMapPrefixType == 5 || g_iMapPrefixType == 6) {
 		g_iZomTeamIndex = 2; //We'll set Red team as a zombie for those maps
 		g_iHumTeamIndex = 3; //We'll set Blue team as a zombie for those maps
-		PrintToServer("Game Rules Changed, Zombie team is Red, Human team is Blue");
+		PrintToServer("\nGame Rules Changed, Zombie team is Red, Human team is Blue\n");
 	} // If the map is ZM, ZS, ZOM, ZE
-}
-/*
-logCheckTeamRules(client) {  //We're applying team rules and checking here.
-	//if (g_bOyun && g_iSetupCount <= 0 && g_iDalgaSuresi >= 0) { //If the setup is over. This prevents crashing and fucking up the game.
-	if (GetClientTeam(client) == g_iZomTeamIndex) {
-		g_bZombi[client] = true;
-	} else if (GetClientTeam(client) <= g_iHumTeamIndex) {
-		g_bZombi[client] = false;
-	}
-	//} 
 } 
-*/

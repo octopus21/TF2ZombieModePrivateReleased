@@ -3,18 +3,19 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "Devil"
-#define PLUGIN_VERSION "0.01"
+#define PLUGIN_VERSION "1.11"
 
 #define TRACE_START 24.0
 #define TRACE_END 64.0
 
 #define MDL_LASER "sprites/laser.vmt"
 
-#define SND_MINEPUT "npc/roller/blade_cut.wav"
-#define SND_MINEACT "npc/roller/mine/rmine_blades_in2.wav"
-#define SND_ZOMBIDLE01 "npc/zombie/zombie_voice_idle1.wav"
-#define SND_ZOMBIDLE02 "npc/zombie/zombie_voice_idle5.wav"
+#define SND_MINEPUT "npc/roller/blade_cut.wav" //Sound Of the Laser Mine OnPut
+#define SND_MINEACT "npc/roller/mine/rmine_blades_in2.wav"//Sound Of the Laser Mine OnActivate
+#define SND_ZOMBIDLE01 "npc/zombie/zombie_voice_idle1.wav"//Sound Of the Player That uses VoiceMenu
+#define SND_ZOMBIDLE02 "npc/zombie/zombie_voice_idle5.wav"//Sound Of the Player That uses VoiceMenu
 #define SND_BARNACLE01 "npc/barnacle/barnacle_bark1.wav"
+#define MDL_ZOMBIE "models/zombie/classic.mdl"
 
 #define FFADE_IN            (0x0001)        // Just here so we don't pass 0 into the function
 #define FFADE_OUT           (0x0002)        // Fade out (not in)
@@ -29,48 +30,48 @@
 #include <sdkhooks>
 //#include <vaultuser> => My Stock, probably use it later.
 
-new clientTimer[MAXPLAYERS + 1];
+new Handle:clientTimer[MAXPLAYERS + 1];
 new Handle:g_hTimer12 = INVALID_HANDLE;
 
 new g_iTekSefer[MAXPLAYERS + 1] = 0;
 
 //Status
-new bool:g_bStatusKor[MAXPLAYERS + 1];
-new bool:g_bStatusJarate[MAXPLAYERS + 1];
-new bool:g_bStatusBleed[MAXPLAYERS + 1];
-new bool:g_bStatusManOWar[MAXPLAYERS + 1];
-new bool:g_bSlowness[MAXPLAYERS + 1];
+new bool:g_bStatusKor[MAXPLAYERS + 1]; //Status for blindness(Applies on client)
+new bool:g_bStatusJarate[MAXPLAYERS + 1]; //Status for Jarated effect(Applies on client)
+new bool:g_bStatusBleed[MAXPLAYERS + 1]; //Status for Bleed effect(Applies on client)
+new bool:g_bStatusManOWar[MAXPLAYERS + 1]; //Status for ManOWar effect(Applies on client)
+new bool:g_bSlowness[MAXPLAYERS + 1]; //Status for Slowness effect(Applies on client)
 
 //DemiBossProgress
-new g_iDemiBossProgress[MAXPLAYERS + 1] = 0;
-new g_iHumanCreditProgress[MAXPLAYERS + 1] = 0;
+new g_iDemiBossProgress[MAXPLAYERS + 1] = 0; //Zombie Credits
+new g_iHumanCreditProgress[MAXPLAYERS + 1] = 0; //Human Credits
 new g_iKillsAsZombi[MAXPLAYERS + 1] = 0;
 new g_iKillsAsHuman[MAXPLAYERS + 1] = 0;
 
-new bool:g_bMine[2048] = false;
+new bool:g_bMine[2048] = false; //Checks if the attack done by a mine (Not used)
 new g_iHumTeamIndex;
 new g_iZomTeamIndex;
-new g_iMapPrefixType;
+new g_iMapPrefixType; //Stores the integer that was given by a map prefixes For example zf = 1, szf = 2 ...
 
 //new bool:g_bMineDamage[MAXPLAYERS + 1] = false;
 
 
-int gCount = 1;
+int gCount = 1; //Do not touch this
 
-int g_iMineCount[MAXPLAYERS + 1] = 0;
+int g_iMineCount[MAXPLAYERS + 1] = 0; //Mine count for client
 #define COLOR_B "0 0 255"
 
 //
 
 
 
-#define ambience_1 "slender/intro.mp3"
+#define ambience_1 "slender/intro.mp3" //lol
 
 //new UserMsg:g_FadeUserMsgId;
 
 public Plugin:myinfo = 
 {
-	name = "", 
+	name = "Supported Stocks", 
 	author = PLUGIN_AUTHOR, 
 	description = "", 
 	version = PLUGIN_VERSION, 
@@ -83,6 +84,7 @@ public OnMapStart() {
 	ClearTimer(g_hTimer12);
 	PrecacheModel("models/props_lab/tpplug.mdl", true);
 	PrecacheModel(MDL_LASER, true);
+	PrecacheModel(MDL_ZOMBIE, true);
 	//PrecacheModel("models/props_debris/wood_board05a.mdl", true);
 	
 	PrecacheSound(SND_MINEPUT, true);
@@ -102,8 +104,8 @@ public OnMapEnd() {
 }
 public OnClientPutInServer(client) {
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	g_iMineCount[client] = 0;
-	g_iHumanCreditProgress[client] = 0;
+	g_iMineCount[client] = 0; //We set mine count for the client index to 0 when client put in server
+	g_iHumanCreditProgress[client] = 0; //We set Credits for the client index to 0 when client put in server
 }
 public OnPluginStart()
 {
@@ -118,10 +120,10 @@ public OnPluginStart()
 	LoadTranslations("tf2zombiemodvs.phrases");
 }
 public OnClientDisconnect(client) {
-	g_iTekSefer[client] = 0;
-	g_iDemiBossProgress[client] = 0;
-	g_iMineCount[client] = 0;
-	g_iHumanCreditProgress[client] = 0;
+	g_iTekSefer[client] = 0; //We set the spawn times for 0
+	g_iDemiBossProgress[client] = 0; //We set the Zombie credits to 0
+	g_iMineCount[client] = 0; //We set mine count to the 0
+	g_iHumanCreditProgress[client] = 0; //Human credits are 0 now cuz you'Re disconnected, fool..
 }
 public OnClientConnected(client) {
 	g_iTekSefer[client] = 0;
@@ -131,16 +133,14 @@ public OnClientConnected(client) {
 }
 public Action:Test(client, args)
 {
-	PrintToChat(client, "Zombie:%d", g_iZomTeamIndex);
-	PrintToChat(client, "Human:%d", g_iHumTeamIndex);
 	//Shop
-	if (GetClientTeam(client) == g_iHumTeamIndex) {
+	if (GetClientTeam(client) == g_iHumTeamIndex) {  // => This one here for Human Market
 		Menu shop = new Menu(zombishop);
 		shop.SetTitle("Human Market! [Credits:%d]", g_iHumanCreditProgress[client]);
 		shop.AddItem("1", "LaserMine => [25  Credits]");
 		shop.ExitButton = true;
 		shop.Display(client, 100);
-	} else if (GetClientTeam(client) == g_iZomTeamIndex) {
+	} else if (GetClientTeam(client) == g_iZomTeamIndex) {  // => This one here for Zombie Market
 		Menu shopZom = new Menu(zomshop);
 		shopZom.SetTitle("Zombi Market! [DemiBoss Credits: %d]", g_iDemiBossProgress[client]);
 		shopZom.AddItem("1", "Speed Boost for 15 secs => [5 Credits]");
@@ -244,7 +244,7 @@ public Action:Listener_Voice(client, const String:command[], argc) {
 	GetClientAbsOrigin(client, flPos);
 	GetCmdArgString(arguments, sizeof(arguments));
 	if (StrEqual(arguments, "0 0")) {
-		if (GetClientTeam(client) == 3) {
+		if (GetClientTeam(client) == g_iZomTeamIndex) {
 			SetClientOverlay(client, " "); //effects/tp_refract
 			//PerformFade(client, 500, { 0, 255, 0, 50 } );
 			clientTimer[client] = CreateTimer(10.0, timer_Fade, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -331,9 +331,9 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	}
 	
 	new silahId;
-	new clientsilahId;
+	//new clientsilahId;
 	if (IsValidClient(attacker)) {
-		clientsilahId = ClientWeapon(attacker);
+		//clientsilahId = ClientWeapon(attacker);
 	}
 	//(attacker == inflictor) ? (silahId = clientsilahId) : (silahId = inflictor);
 	
@@ -377,30 +377,6 @@ SetClientOverlay(client, String:strOverlay[])
 	
 	ClientCommand(client, "r_screenoverlay \"%s\"", strOverlay);
 }
-/*
-BlindPlayer(client, iAmount)
-{
-	new iTargets[2];
-	iTargets[0] = client;
-
-	new Handle:message = StartMessageEx(g_FadeUserMsgId, iTargets, 1);
-	BfWriteShort(message, 1536);
-	BfWriteShort(message, 1536);
-
-	if (iAmount == 0) {
-		BfWriteShort(message, (0x0001 | 0x0010));
-	} else {
-		BfWriteShort(message, (0x0002 | 0x0008));
-	}
-
-	BfWriteByte(message, 0);
-	BfWriteByte(message, 0);
-	BfWriteByte(message, 0);
-	BfWriteByte(message, iAmount);
-
-	EndMessage();
-}
-*/
 
 PerformFade(client, duration, const color[4]) {
 	new Handle:hFadeClient = StartMessageOne("Fade", client);
@@ -414,7 +390,7 @@ PerformFade(client, duration, const color[4]) {
 	EndMessage();
 }
 
-PerformHudMsg(client, x, y, Float:duration, const String:szMsg[]) {
+PerformHudMsg(client, Float:x, Float:y, Float:duration, const String:szMsg[]) {
 	new Handle:hBf = StartMessageOne("HudMsg", client);
 	BfWriteByte(hBf, 3); //channel
 	BfWriteFloat(hBf, x); // -1.0 x ( -1 = center )
@@ -591,17 +567,15 @@ void SetMine(int client)
 		DispatchKeyValue(ent, "StartDisabled", "false");
 		DispatchSpawn(ent);
 		TeleportEntity(ent, end, normal, NULL_VECTOR);
-		//DispatchKeyValue(ent, "spawnflags", "2");
 		SetEntProp(ent, Prop_Data, "m_usSolidFlags", 152);
 		SetEntProp(ent, Prop_Data, "m_CollisionGroup", 1);
 		SetEntityMoveType(ent, MOVETYPE_NONE);
 		SetEntProp(ent, Prop_Data, "m_MoveCollide", 0);
 		SetEntProp(ent, Prop_Data, "m_nSolidType", 6);
-		//SetEntProp(ent, Prop_Send, "m_bGlowEnabled", 1);
 		SetEntPropEnt(ent, Prop_Data, "m_hLastAttacker", client);
 		DispatchKeyValue(ent, "targetname", beammdl);
-		DispatchKeyValue(ent, "ExplodeRadius", "255");
-		DispatchKeyValue(ent, "ExplodeDamage", "600");
+		DispatchKeyValue(ent, "ExplodeRadius", "62");
+		DispatchKeyValue(ent, "ExplodeDamage", "550");
 		Format(tmp, sizeof(tmp), "%s,Break,,0,-1", beammdl);
 		DispatchKeyValue(ent, "OnHealthChanged", tmp);
 		Format(tmp, sizeof(tmp), "%s,Kill,,0,-1", beam);
@@ -659,7 +633,7 @@ public Action TurnBeamOn(Handle timer, DataPack hData)
 	//char color[26]; // We didn't use this integer for now. That's why it's commented
 	
 	hData.Reset();
-	int client = hData.ReadCell(); //We didn't use this integer for now. That's why it's commented
+	int client = hData.ReadCell(); //We didn't use this integer for now.
 	int ent = hData.ReadCell();
 	int ent2 = hData.ReadCell();
 	
@@ -684,7 +658,6 @@ public void mineBreak(const char[] output, int caller, int activator, float dela
 {
 	UnhookSingleEntityOutput(caller, "OnBreak", mineBreak);
 	AcceptEntityInput(caller, "kill");
-	//g_iMineCount[owner]--;
 }
 
 public bool FilterAll(int entity, int contentsMask)
@@ -693,21 +666,24 @@ public bool FilterAll(int entity, int contentsMask)
 }
 
 public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, float delay)
-//public Action SDKCallback_TouchPost_MineLaser(int iEnt, int iActivator)
 {
+	new currentHealthOfActivator = GetClientHealth(iActivator);
 	AcceptEntityInput(ent2, "TurnOff");
 	AcceptEntityInput(ent2, "TurnOn");
+	float vOrigin[3];
+	GetClientAbsOrigin(iActivator, vOrigin);
 	if (GetClientTeam(iActivator) == g_iZomTeamIndex) {
-		AcceptEntityInput(ent2, "break");
-		AcceptEntityInput(ent2, "kill");
+		//AcceptEntityInput(ent2, "break");
+		//AcceptEntityInput(ent2, "kill");
 		PrintToConsole(iActivator, "touch zombie");
+		SetEntityHealth(iActivator, currentHealthOfActivator - 1);
+		TF2_StunPlayer(iActivator, 0.1, 0.80, TF_STUNFLAG_SLOWDOWN);
+		return Plugin_Handled;
 	} else {
 		PrintToConsole(iActivator, "touch insan");
 		return Plugin_Handled;
 	}
-	float vOrigin[3];
-	GetClientAbsOrigin(iActivator, vOrigin);
-	return Plugin_Continue;
+	//return Plugin_Continue;
 }
 
 
@@ -752,6 +728,5 @@ zombimod()
 	}
 	else if (!StrContains(mapv, "ze_", false)) {
 		g_iMapPrefixType = 6;
-		//PrintToServer("\n\n\n\n      ZOMBIE ESCAPE MOD ON \n\n\n");
 	}
 } 

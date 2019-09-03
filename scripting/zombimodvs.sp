@@ -127,9 +127,9 @@ new g_iHumTeamIndex;
             1)Rocket Jumper
             2)Sticky Jumper
             3)GunBoats
-            4)Natascha
-            5)Cloak & Dagger
-            6)Disguise Kit For spies
+            4)Natascha -- Untested
+            5)Cloak & Dagger -- Untested
+            6)Disguise Kit For spies -- Untested (But %99 works)
 */
 
 /*

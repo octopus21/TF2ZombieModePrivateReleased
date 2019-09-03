@@ -122,7 +122,30 @@ new bool:g_bBossZombi[MAXPLAYERS + 1];
 new Handle:clientBuffTimerRemoval[MAXPLAYERS + 1];
 new g_iZomTeamIndex;
 new g_iHumTeamIndex;
+/*
+            CURRENT REMOVED WEAPONS
+            1)Rocket Jumper
+            2)Sticky Jumper
+            3)GunBoats
+            4)Natascha
+            5)Cloak & Dagger
+            6)Disguise Kit For spies
+*/
 
+/*
+            UNTESTED UPDATES
+            
+            3.09.2019
+            
+            1)Added Redeem Command
+            2)Added MakeZombie Command
+            3)Removed natascha for usage for humans
+            4)Removed Cloak And Dagger for Usage for humans
+            5)Added invis watch for zombies for zombies
+            6)Removed Giant effect for boss zombies in order to stop stucking.
+            7)Added some translations quotes but not in .phrases file.
+            
+*/
 public Plugin:myinfo = 
 {
 	name = "Zombie Escape/Survival", 
@@ -246,7 +269,7 @@ public Action:ClassSelection(Handle:timer, any:id) {
 		}
 	} else {
 		if (g_bEnabled) {
-			PrintToChat(id, "Lütfen [,] e basın! -- Please press [,]!");
+			PrintToChat(id, "%t", "pressing [,]"); //Lütfen [,] e basın! -- Please press [,]!
 		}
 	}
 }
@@ -263,7 +286,15 @@ public OnPluginStart()
 {
 	//Console Commands
 	RegConsoleCmd("sm_msc", msc);
+	
 	RegConsoleCmd("sm_menu", zmenu);
+	RegConsoleCmd("sm_help", zmenu);
+	RegConsoleCmd("sm_zm", zmenu);
+	RegConsoleCmd("sm_zmenu", zmenu);
+	RegConsoleCmd("sm_zhelp", zmenu);
+	
+	RegAdminCmd("sm_redeem", redeem, ADMFLAG_SLAY);
+	RegAdminCmd("sm_makeboss", makeboss, ADMFLAG_SLAY);
 	//Convars
 	zm_tHazirliksuresi = CreateConVar("zm_setup", "30", "Setup Timer/Hazirlik Suresi", FCVAR_NOTIFY, true, 30.0, true, 70.0);
 	zm_tDalgasuresi = CreateConVar("zm_dalgasuresi", "225", "Round Timer/Setup bittikten sonraki round zamani", FCVAR_NOTIFY, true, 120.0, true, 300.0);
@@ -320,6 +351,63 @@ public OnPluginStart()
 		}
 		//CloseHandle(file);
 	}
+}
+public Action:redeem(client, args) {
+	decl String:arg1[32];
+	if (args != 1) {
+		ReplyToCommand(client, "\x05[SM]\x01 Usage: sm_redeem <name>");
+		return Plugin_Handled;
+	}
+	GetCmdArg(1, arg1, sizeof(arg1));
+	decl String:target_name[MAX_TARGET_LENGTH];
+	new target_list[MAXPLAYERS], target_count;
+	new bool:tn_is_ml;
+	if ((target_count = ProcessTargetString(arg1, client, target_list, MAXPLAYERS, COMMAND_FILTER_ALIVE, target_name, sizeof(target_name), tn_is_ml)) <= 0) {
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	for (new i = 0; i < target_count; i++)
+	{
+		if (GetClientTeam(target_list[i]) == g_iZomTeamIndex) {
+			ChangeClientTeam(target_list[i], g_iHumTeamIndex);
+			TF2_RespawnPlayer(target_list[i]);
+			TF2_SetPlayerClass(target_list[i], TFClass_Scout);
+			decl String:name[MAX_NAME_LENGTH];
+			GetClientName(target_list[i], name, sizeof(name));
+			ShowActivity2(client, "[SM] ", "Redeemed %s!", name);
+		} else {
+			PrintToChat(client, "That player is already human!");
+			return Plugin_Handled;
+		}
+	}
+	return Plugin_Handled;
+}
+public Action:makeboss(client, args) {
+	decl String:arg1[32];
+	if (args != 1) {
+		ReplyToCommand(client, "\x05[SM]\x01 Usage: sm_makeboss <name>");
+		return Plugin_Handled;
+	}
+	GetCmdArg(1, arg1, sizeof(arg1));
+	decl String:target_name[MAX_NAME_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	new bool:tn_is_ml;
+	if ((target_count = ProcessTargetString(arg1, client, target_list, MAXPLAYERS, COMMAND_FILTER_ALIVE, target_name, sizeof(target_name), tn_is_ml)) <= 0) {
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	for (int i = 0; i < target_count; i++) {
+		if (GetClientTeam(target_list[i]) == g_iZomTeamIndex) {
+			bosszombi(target_list[i]);
+			decl String:name[MAX_NAME_LENGTH];
+			GetClientName(target_list[i], name, sizeof(name));
+			ShowActivity2(client, "[SM] ", "Became boss zombie %s!", name);
+		} else {
+			PrintToChat(client, "You can't make humans boss zombie!");
+			return Plugin_Handled;
+		}
+	}
+	return Plugin_Handled;
 }
 public Action:OnGetMaxHealth(client, &maxhealth)
 {
@@ -572,8 +660,8 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 					{
 						switch (GetEntProp(slot, Prop_Send, "m_iItemDefinitionIndex"))
 						{
-							case 30: {  }
-							default:TF2_RemoveWeaponSlot(client, 4);
+							case 60: { TF2_RemoveWeaponSlot(client, 4); } //Cloak and Dagger
+							default:TF2_RemoveWeaponSlot(client, slot);
 						}
 					}
 				}
@@ -596,8 +684,8 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 					decl String:classNameSoldier[128];
 					if (GetEntityClassname(slotSoldier, classNameSoldier, sizeof(classNameSoldier)) && StrContains(classNameSoldier, "tf_weapon", false) != -1) {
 						switch (GetEntProp(slotSoldier, Prop_Send, "m_iItemDefinitionIndex")) {
-							case 237: { TF2_RemoveWeaponSlot(client, 0); }
-							case 133: { TF2_RemoveWeaponSlot(client, 0); }
+							case 237: { TF2_RemoveWeaponSlot(client, 0); } //Rocket Jumper
+							case 133: { TF2_RemoveWeaponSlot(client, 0); } //Gunboats
 							default:TF2_RemoveWeaponSlot(client, slotSoldier);
 						}
 					}
@@ -610,6 +698,18 @@ public Action:OnSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 					TF2_SetPlayerClass(client, TFClass_Scout);
 					TF2_RespawnPlayer(client);
 					PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC Limit:2 %t", "Engineer Limit Is Reached");
+				}
+			}
+			case TFClass_Heavy: {
+				new slotHeavy = GetPlayerWeaponSlot(client, 0);
+				if (IsValidEntity(slotHeavy)) {
+					decl String:classNameHeavy[128];
+					if (GetEntityClassname(slotHeavy, classNameHeavy, sizeof(classNameHeavy)) && StrContains(classNameHeavy, "tf_weapon", false) != -1) {
+						switch (GetEntProp(slotHeavy, Prop_Send, "m_iItemDefinitionIndex")) {
+							case 41: { TF2_RemoveWeaponSlot(client, 0); } //Natascha
+							default:TF2_RemoveWeaponSlot(client, slotHeavy);
+						}
+					}
 				}
 			}
 		}
@@ -737,20 +837,20 @@ bosszombi(client)
 		g_bBossZombi[client] = true;
 		TF2_SetPlayerClass(client, TFClass_Heavy);
 		TF2_RespawnPlayer(client);
-		//SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.5);
+		//SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.5); // This Property makes player stuck on walls.
 		TF2_AddCondition(client, TFCond_BalloonHead);
 		TF2_AddCondition(client, TFCond_RuneVampire);
-		TF2_AddCondition(client, TFCond_HalloweenGiant);
+		//TF2_AddCondition(client, TFCond_HalloweenGiant); // This condition makes player stuck on walls.
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", 1);
 		SetEntityRenderColor(client, 255, 0, 0, 0);
 		EmitSoundToAll("npc/zombie_poison/pz_alert2.wav");
 		
 		if (!g_iVaultKullanicilar[client]) {
-			g_iNonPreBoss[client] = false; //Donator olan boss zombi seçildi
+			g_iNonPreBoss[client] = false; //Donator olmayan boss zombi seçildi
 			PrintToServer("\n\n\n Donator olmayan birisi boss zombi seçildi");
 		} else if (g_iVaultKullanicilar[client]) {
-			g_iNonPreBoss[client] = false; // Donator olmayan boss zombi seçildi
-			PrintToChat(client, "Donator olarak boss zombi seçilme şansın arttırıldı, boss zombi seçildin.");
+			g_iNonPreBoss[client] = false; // Donator olan boss zombi seçildi
+			PrintToChat(client, "%t", "boss as donator");
 		}
 		HUD(-1.0, 0.2, 6.0, 255, 0, 0, 2, "\n☠☠☠\nBoss Zombie Came:%N\n☠☠☠", client);
 	}
@@ -789,17 +889,19 @@ public Action:silah(Handle:timer, any:client)
 	{
 		for (new i = 0; i <= 5; i++)
 		{
-			if (client > 0 && i != 2 && GetClientTeam(client) == g_iZomTeamIndex) //Zombie, client
+			if (client > 0 && i != 2 && GetClientTeam(client) == g_iZomTeamIndex && i != 4) //Zombie, client
 			{
 				TF2_RemoveWeaponSlot(client, i);
 			}
 		}
 		if (client > 0 && GetClientTeam(client) == g_iZomTeamIndex)
 		{
-			new silah1 = GetPlayerWeaponSlot(client, 2);
-			if (IsValidEdict(silah1))
+			new slot2 = GetPlayerWeaponSlot(client, 2);
+			new slot4 = GetPlayerWeaponSlot(client, 4);
+			if (IsValidEdict(slot2) && IsValidEdict(slot4))
 			{
-				EquipPlayerWeapon(client, silah1);
+				EquipPlayerWeapon(client, slot2);
+				EquipPlayerWeapon(client, slot4);
 			}
 		}
 	}
@@ -1156,11 +1258,11 @@ public Action:msc(client, args)
 }
 MuzikDurdurma(client)
 {
-	PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCMüzikler durduruldu.");
+	PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Music Stop");
 }
 MuzikAc(client)
 {
-	PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCMüzikler açıldı.");
+	PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Music Open");
 }
 OyuncuMuzikAyari(client, bool:acik)
 {

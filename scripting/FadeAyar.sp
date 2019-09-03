@@ -33,7 +33,7 @@
 new Handle:clientTimer[MAXPLAYERS + 1];
 new Handle:g_hTimer12 = INVALID_HANDLE;
 
-new g_iTekSefer[MAXPLAYERS + 1] = 0;
+new g_iTekSefer[MAXPLAYERS + 1] =  { 0, ... };
 
 //Status
 new bool:g_bStatusKor[MAXPLAYERS + 1]; //Status for blindness(Applies on client)
@@ -43,10 +43,10 @@ new bool:g_bStatusManOWar[MAXPLAYERS + 1]; //Status for ManOWar effect(Applies o
 new bool:g_bSlowness[MAXPLAYERS + 1]; //Status for Slowness effect(Applies on client)
 
 //DemiBossProgress
-new g_iDemiBossProgress[MAXPLAYERS + 1] = 0; //Zombie Credits
-new g_iHumanCreditProgress[MAXPLAYERS + 1] = 0; //Human Credits
-new g_iKillsAsZombi[MAXPLAYERS + 1] = 0;
-new g_iKillsAsHuman[MAXPLAYERS + 1] = 0;
+new g_iDemiBossProgress[MAXPLAYERS + 1] =  { 0, ... }; //Zombie Credits
+new g_iHumanCreditProgress[MAXPLAYERS + 1] =  { 0, ... }; //Human Credits
+new g_iKillsAsZombi[MAXPLAYERS + 1] =  { 0, ... };
+new g_iKillsAsHuman[MAXPLAYERS + 1] =  { 0, ... };
 
 new bool:g_bMine[2048] = false; //Checks if the attack done by a mine (Not used)
 new g_iHumTeamIndex;
@@ -58,7 +58,7 @@ new g_iMapPrefixType; //Stores the integer that was given by a map prefixes For 
 
 int gCount = 1; //Do not touch this
 
-int g_iMineCount[MAXPLAYERS + 1] = 0; //Mine count for client
+int g_iMineCount[MAXPLAYERS + 1] =  { 0, ... }; //Mine count for client
 #define COLOR_B "0 0 255"
 
 //
@@ -71,7 +71,7 @@ int g_iMineCount[MAXPLAYERS + 1] = 0; //Mine count for client
 
 public Plugin:myinfo = 
 {
-	name = "Supported Stocks", 
+	name = "Secondary Stocks / Handles", 
 	author = PLUGIN_AUTHOR, 
 	description = "", 
 	version = PLUGIN_VERSION, 
@@ -99,8 +99,8 @@ public OnMapStart() {
 	//zombimod();
 }
 public OnMapEnd() {
-	//g_iTekSefer[MAXPLAYERS] = 0;
-	//g_iHumanCreditProgress[MAXPLAYERS] = 0;
+	//g_iTekSefer[MAXPLAYERS] = {0, ...};
+	//g_iHumanCreditProgress[MAXPLAYERS] = {0, ...};
 }
 public OnClientPutInServer(client) {
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
@@ -117,6 +117,9 @@ public OnPluginStart()
 	AddCommandListener(Listener_Voice, "voicemenu");
 	
 	RegConsoleCmd("sm_shop", Test);
+	RegConsoleCmd("sm_market", Test);
+	RegConsoleCmd("sm_gears", Test);
+	
 	LoadTranslations("tf2zombiemodvs.phrases");
 }
 public OnClientDisconnect(client) {
@@ -150,6 +153,8 @@ public Action:Test(client, args)
 		shopZom.Display(client, 100);
 	}
 }
+//Human Shop
+//Human Credits = g_iHumanCreditProgress
 public zombishop(Handle menu, MenuAction action, client, item)
 {
 	if (action == MenuAction_Select)
@@ -177,6 +182,8 @@ public zombishop(Handle menu, MenuAction action, client, item)
 		CloseHandle(menu);
 	}
 }
+//Zombie Shop
+//Zombie Credits = g_iDemiBossProgress
 public zomshop(Handle menu, MenuAction action, client, item)
 {
 	if (action == MenuAction_Select)
@@ -289,14 +296,14 @@ public Action:spawn(Handle:event, const String:name[], bool:dontBroadcast)
 		if (ZombiSayisi() <= InsanSayisi()) {
 			
 		} //Zombilerin sayısı insanların sayısından küçük eşit ise status eklemesi yapabiliriz.
-		PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Press 'e' to activate zombie vision");
+		PrintToChat(client, "\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCC %t", "Press 'e' to scream");
 		//SetClientOverlay(client, "effects/tp_refract");
 	}
 	else if (GetClientTeam(client) == g_iHumTeamIndex && IsValidEntity(client) && client > 0) {
 		g_iTekSefer[client]++;
 		PrintToChat(client, "%d", g_iTekSefer[client]);
 		SetClientOverlay(client, " ");
-		if (g_iTekSefer[client] <= 2) {
+		if (g_iTekSefer[client] <= 1) {
 			PerformFade(client, 500, { 0, 0, 0, 255 } );
 			PerformHudMsg(client, -1.0, 0.40, 8.0, "☠ Virus is out of control! One of the humans will be Zombie! ☠");
 			EmitSoundToClient(client, ambience_1);
@@ -640,10 +647,15 @@ public Action TurnBeamOn(Handle timer, DataPack hData)
 	if (IsValidEntity(ent))
 	{
 		if (GetClientTeam(client) == g_iHumTeamIndex) {
-			DispatchKeyValue(ent2, "rendercolor", "0 0 255");
+			if (g_iHumTeamIndex == 2) {
+				DispatchKeyValue(ent2, "rendercolor", "0 0 255");
+			}
+			else if (g_iHumTeamIndex == 3) {
+				DispatchKeyValue(ent2, "rendercolor", "255 0 0");
+			}
 		}
 		// To Do: Game-based team checks and handling.
-		DispatchKeyValue(ent2, "rendercolor", "0 0 255");
+		//DispatchKeyValue(ent2, "rendercolor", "0 0 255");
 		AcceptEntityInput(ent2, "TurnOn");
 		float end[3];
 		end[0] = hData.ReadFloat();
@@ -673,12 +685,13 @@ public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, flo
 	float vOrigin[3];
 	GetClientAbsOrigin(iActivator, vOrigin);
 	if (GetClientTeam(iActivator) == g_iZomTeamIndex) {
-		//AcceptEntityInput(ent2, "break");
-		//AcceptEntityInput(ent2, "kill");
+		//AcceptEntityInput(ent2, "break"); //We have to add this if we want to destroy the mine and explode it.
+		//AcceptEntityInput(ent2, "kill"); //We have to add this if we want to destroy the mine and explode it.
 		PrintToConsole(iActivator, "touch zombie");
 		SetEntityHealth(iActivator, currentHealthOfActivator - 1);
 		TF2_StunPlayer(iActivator, 0.1, 0.80, TF_STUNFLAG_SLOWDOWN);
-		return Plugin_Handled;
+		TF2_IgnitePlayer(iActivator, iActivator);
+		return Plugin_Handled; //We have to remove this if we want to destroy the mine and explode it.
 	} else {
 		PrintToConsole(iActivator, "touch insan");
 		return Plugin_Handled;

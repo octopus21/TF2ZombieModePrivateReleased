@@ -52,9 +52,8 @@ new bool:g_bMine[2048] = false; //Checks if the attack done by a mine (Not used)
 new g_iHumTeamIndex;
 new g_iZomTeamIndex;
 new g_iMapPrefixType; //Stores the integer that was given by a map prefixes For example zf = 1, szf = 2 ...
-
 //new bool:g_bMineDamage[MAXPLAYERS + 1] = false;
-
+new g_iNailedTimes[MAXPLAYERS + 1] =  { 0, ... };
 
 int gCount = 1; //Do not touch this
 
@@ -83,6 +82,8 @@ public OnMapStart() {
 	//g_iTekSefer[MAXPLAYERS] = 0; // Her harita yüklendiğinde oyuncuların değerleri 0 olsun
 	ClearTimer(g_hTimer12);
 	PrecacheModel("models/props_lab/tpplug.mdl", true);
+	//PrecacheModel("models/props_farm/wooden_barrel.mdl", true);
+	PrecacheModel("models/props_c17/concrete_barrier001a.mdl", true);
 	PrecacheModel(MDL_LASER, true);
 	PrecacheModel(MDL_ZOMBIE, true);
 	//PrecacheModel("models/props_debris/wood_board05a.mdl", true);
@@ -106,6 +107,7 @@ public OnClientPutInServer(client) {
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	g_iMineCount[client] = 0; //We set mine count for the client index to 0 when client put in server
 	g_iHumanCreditProgress[client] = 0; //We set Credits for the client index to 0 when client put in server
+	g_iNailedTimes[client] = 0;
 }
 public OnPluginStart()
 {
@@ -119,20 +121,30 @@ public OnPluginStart()
 	RegConsoleCmd("sm_shop", Test);
 	RegConsoleCmd("sm_market", Test);
 	RegConsoleCmd("sm_gears", Test);
+	RegConsoleCmd("sm_prop", Prop);
 	
 	LoadTranslations("tf2zombiemodvs.phrases");
+}
+public OnAutoConfigsBuffered() //After the server.cfg has loaded
+{
+	SetConVarInt(FindConVar("tf_allow_player_use"), 1);
 }
 public OnClientDisconnect(client) {
 	g_iTekSefer[client] = 0; //We set the spawn times for 0
 	g_iDemiBossProgress[client] = 0; //We set the Zombie credits to 0
 	g_iMineCount[client] = 0; //We set mine count to the 0
 	g_iHumanCreditProgress[client] = 0; //Human credits are 0 now cuz you'Re disconnected, fool..
+	g_iNailedTimes[client] = 0;
 }
 public OnClientConnected(client) {
 	g_iTekSefer[client] = 0;
 	g_iDemiBossProgress[client] = 0;
 	g_iMineCount[client] = 0;
 	g_iHumanCreditProgress[client] = 0;
+	g_iNailedTimes[client] = 0;
+}
+public Action:Prop(client, args) {
+	SetProp(client);
 }
 public Action:Test(client, args)
 {
@@ -271,7 +283,7 @@ public Action:death(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new killed = GetClientOfUserId(GetEventInt(event, "userid"));
 	new killer = GetClientOfUserId(GetEventInt(event, "attacker"));
-	
+	g_iNailedTimes[killed] = 0;
 	if (g_iKillsAsZombi[killer] > 5) {
 		g_iDemiBossProgress[killer] = g_iDemiBossProgress[killer] + 15;
 	}
@@ -290,6 +302,7 @@ public Action:death(Handle:event, const String:name[], bool:dontBroadcast)
 public Action:spawn(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	g_iNailedTimes[client] = 0;
 	//PrintToChatAll("\x07696969[ \x07A9A9A9ZF \x07696969]\x07CCCCCCZombie picking up ratio is : 11,111");
 	if (GetClientTeam(client) == g_iZomTeamIndex) {
 		//Balance Update 12.08.2019
@@ -616,6 +629,9 @@ void SetMine(int client)
 		AcceptEntityInput(ent2, "TurnOff");
 		HookSingleEntityOutput(ent2, "OnTouchedByEntity", MineLaser_OnTouch, false);
 		
+		//Create invisible wall in front of the beam
+		
+		
 		// Create a datapack
 		DataPack hData = new DataPack();
 		CreateTimer(2.0, TurnBeamOn, hData);
@@ -742,4 +758,319 @@ zombimod()
 	else if (!StrContains(mapv, "ze_", false)) {
 		g_iMapPrefixType = 6;
 	}
+}
+public Action:OnPlayerRunCmd(client, &buttons) {
+	int iAmount = 0;
+	if ((buttons & IN_RELOAD)) {
+		decl Float:VecPos_grabbed[3], Float:VecPos_client[3];
+		new looking = TraceToEntity(client);
+		PrintToChat(client, "%d", looking);
+		if (looking > 0) {
+			//PropNail(client, GetClientAimEntity(client, 50.0)); //Nailing the returned index of that stock
+			decl String:Classname[32];
+			GetEntityClassname(looking, Classname, sizeof(Classname));
+			if (!StrEqual(Classname, "prop_physics_override", false) != -1) {
+				GetEntPropVector(looking, Prop_Send, "m_vecOrigin", VecPos_grabbed);
+				GetClientEyePosition(client, VecPos_client);
+				GetVectorDistance(VecPos_grabbed, VecPos_client);
+				PrintToConsole(client, "prop_physics_override");
+				PrintToConsole(client, "%f", VecPos_grabbed);
+				if (g_iNailedTimes[client] <= 1) {
+					PropNail(client, looking, 10);
+				}
+				g_iNailedTimes[client]++;
+			}
+			//PrintToChat(client, "%d ", GetClientAimEntity(client, 5000000.0));
+			//AcceptEntityInput(GetClientAimEntity(client, 5000000.0), "Kill");
+		}
+	} else if ((buttons & IN_ATTACK2)) {
+		//buttons += IN_USE;
+		new looking = TraceToEntity(client);
+		decl Float:VecPos_grabbed[3], Float:VecPos_client[3];
+		decl Float:ClientOrigin[3];
+		decl Float:EyeAngles[3];
+		decl Float:vecToUse[3];
+		GetClientEyeAngles(client, EyeAngles);
+		GetClientAbsOrigin(client, ClientOrigin);
+		GetClientAbsOrigin(client, vecToUse);
+		PrintToChat(client, "%d", looking);
+		if (looking > 0) {
+			decl String:Classname[16];
+			GetEntityClassname(looking, Classname, sizeof(Classname));
+			if (!StrEqual(Classname, "prop_physics_override", false) != -1) {
+				GetEntPropVector(looking, Prop_Send, "m_vecOrigin", VecPos_grabbed);
+				GetClientEyePosition(client, VecPos_client);
+				GetVectorDistance(VecPos_grabbed, VecPos_client);
+				PrintToConsole(client, "prop_physics_override");
+				PrintToConsole(client, "%f", VecPos_grabbed);
+				//PropNail(client, looking, iAmount++);
+				Move(looking, vecToUse, ClientOrigin, EyeAngles, iAmount++);
+			}
+		}
+		//return Plugin_Changed;
+	} else if ((buttons & IN_SPEED)) {
+		new looking = TraceToEntity(client);
+		decl Float:VecPos_grabbed[3], Float:VecPos_client[3];
+		decl Float:ClientOrigin[3];
+		decl Float:EyeAngles[3];
+		decl Float:vecToUse[3];
+		GetClientEyeAngles(client, EyeAngles);
+		GetClientAbsOrigin(client, ClientOrigin);
+		GetClientAbsOrigin(client, vecToUse);
+		PrintToChat(client, "%d", looking);
+		if (looking > 0) {
+			decl String:Classname[16];
+			GetEntityClassname(looking, Classname, sizeof(Classname));
+			if (!StrEqual(Classname, "prop_physics_override", false) != -1) {
+				GetEntPropVector(looking, Prop_Send, "m_vecOrigin", VecPos_grabbed);
+				GetClientEyePosition(client, VecPos_client);
+				GetVectorDistance(VecPos_grabbed, VecPos_client);
+				PrintToConsole(client, "prop_physics_override");
+				PrintToConsole(client, "%f", VecPos_grabbed);
+				//PropNail(client, looking, iAmount++);
+				Move2(looking, vecToUse, ClientOrigin, EyeAngles, iAmount--);
+			}
+		}
+	}
+	//return Plugin_Changed;
+}
+
+//Credits to Playa for this stock
+//Edited to returns if it's prop_physics_override as our prop.
+stock GetClientAimEntity(client, Float:distancetoentity) {
+	decl Float:cleyepos[3], Float:cleyeangle[3];
+	GetClientEyePosition(client, cleyepos);
+	GetClientEyeAngles(client, cleyeangle);
+	new Handle:traceresulthandle = INVALID_HANDLE;
+	traceresulthandle = TR_TraceRayFilterEx(cleyepos, cleyeangle, MASK_SOLID, RayType_Infinite, FilterAll, client);
+	if (TR_DidHit(traceresulthandle)) {
+		decl Float:endpos[3];
+		decl String:className[32];
+		TR_GetEndPosition(endpos, traceresulthandle);
+		distancetoentity = GetVectorDistance(cleyepos, endpos);
+		new entindextoreturn = TR_GetEntityIndex(traceresulthandle);
+		GetEntityClassname(entindextoreturn, className, sizeof(className));
+		if (FindEntityByClassname(entindextoreturn, "prop_physics_override") != -1) {
+			return entindextoreturn + 1;
+		}
+		CloseHandle(traceresulthandle);
+		return entindextoreturn;
+	}
+	CloseHandle(traceresulthandle);
+	return -1;
+}
+//Normal Prop
+void SetProp(client) {
+	int iEnt = CreateEntityByName("prop_physics_override");
+	if (iEnt != -1 && IsValidEntity(iEnt)) {
+		//DispatchKeyValue(iEnt, "model", "models/props_farm/wooden_barrel.mdl");
+		DispatchKeyValue(iEnt, "model", "models/props_c17/concrete_barrier001a.mdl");
+		DispatchKeyValue(iEnt, "solid", "2");
+		DispatchKeyValue(iEnt, "physdamagescale", "0.0");
+		DispatchSpawn(iEnt);
+		
+		decl Float:FurnitureOrigin[3];
+		decl Float:ClientOrigin[3];
+		decl Float:EyeAngles[3];
+		GetClientEyeAngles(client, EyeAngles);
+		GetClientAbsOrigin(client, ClientOrigin);
+		
+		FurnitureOrigin[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1]))));
+		FurnitureOrigin[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1]))));
+		FurnitureOrigin[2] = (ClientOrigin[2] + 50);
+		
+		TeleportEntity(iEnt, FurnitureOrigin, NULL_VECTOR, NULL_VECTOR);
+		
+		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
+		SetEntProp(iEnt, Prop_Data, "m_iHealth", 100);
+		SetEntityMoveType(iEnt, MOVETYPE_VPHYSICS);
+	}
+}
+//We'Re making the prop nailed, and static.
+void PropNail(int client, int iEnt, int iMoveUp) {
+	decl Float:vecToUse[3];
+	decl Float:ClientOrigin[3];
+	decl Float:EyeAngles[3];
+	GetClientEyeAngles(client, EyeAngles);
+	GetClientAbsOrigin(client, ClientOrigin);
+	GetClientAbsOrigin(client, vecToUse);
+	if (iEnt != -1 && !IsValidClient(iEnt)) {
+		AcceptEntityInput(iEnt, "Kill");
+		PrintToChatAll("You have nailed! %d", iEnt);
+		NailedProp(vecToUse, ClientOrigin, EyeAngles, iMoveUp);
+	}
+	//NailedProp(vecToUse, ClientOrigin, EyeAngles, iMoveUp);
+}
+
+void NailedProp(Float:vecToUse[3], Float:ClientOrigin[3], Float:EyeAngles[3], int iMoveUp) {
+	int iEnt = CreateEntityByName("prop_physics_override");
+	if (iEnt != -1 && IsValidEntity(iEnt)) {
+		
+		int hp = 500;
+		DispatchKeyValue(iEnt, "model", "models/props_c17/concrete_barrier001a.mdl");
+		//DispatchKeyValue(iEnt, "model", "models/props_farm/wooden_barrel.mdl");
+		DispatchKeyValue(iEnt, "solid", "2");
+		//DispatchKeyValue(iEnt, "physdamagescale", "0.0");
+		DispatchSpawn(iEnt);
+		SetEntProp(iEnt, Prop_Data, "m_iHealth", hp);
+		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
+		//DispatchKeyValue(iEnt, "health", "1000");
+		//SetEntProp(iEnt, Prop_Data, "m_hGlowEnt", 0);
+		SDKHook(iEnt, SDKHook_OnTakeDamage, OnPropTookDamage);
+		SDKHook(iEnt, SDKHook_StartTouch, Human_Touch);
+		
+		if (!TF2_HasGlow(iEnt)) {
+			TF2_CreateGlow(iEnt);
+		}
+		//SetEntityMoveType(iEnt, MOVETYPE_NONE);
+		vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
+		vecToUse[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1])))); //angle right
+		vecToUse[2] = (ClientOrigin[2] + iMoveUp); //angle height
+		TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
+		SetEntityMoveType(iEnt, MOVETYPE_NONE);
+	}
+}
+void Move(int iEnt, Float:vecToUse[3], Float:ClientOrigin[3], Float:EyeAngles[3], int iMoveUp) {
+	if (iEnt != -1 && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
+		vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
+		vecToUse[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1])))); //angle right
+		vecToUse[2] = (ClientOrigin[2] + iMoveUp); //angle height
+		TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
+	}
+}
+void Move2(int iEnt, Float:vecToUse[3], Float:ClientOrigin[3], Float:EyeAngles[3], int iMoveUp) {
+	if (iEnt != -1 && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
+		vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
+		vecToUse[1] = (ClientOrigin[1] + (iMoveUp * 10 * Sine(DegToRad(EyeAngles[1])))); //angle right
+		vecToUse[2] = (ClientOrigin[2] + iMoveUp); //angle height
+		TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
+	}
+}
+TraceToEntity(client)
+{
+	new Float:vecClientEyePos[3], Float:vecClientEyeAng[3];
+	GetClientEyePosition(client, vecClientEyePos); // Get the position of the player's eyes
+	GetClientEyeAngles(client, vecClientEyeAng); // Get the angle the player is looking    
+	
+	//Check for colliding entities
+	TR_TraceRayFilter(vecClientEyePos, vecClientEyeAng, MASK_SOLID, 
+		RayType_Infinite, TraceRayDontHitSelf, client);
+	
+	if (TR_DidHit(INVALID_HANDLE))
+	{
+		new TRIndex = TR_GetEntityIndex(INVALID_HANDLE);
+		
+		// check max distance
+		new Float:pos[3];
+		GetEntPropVector(TRIndex, Prop_Send, "m_vecOrigin", pos);
+		if (GetVectorDistance(vecClientEyePos, pos) > 512.0)
+			return -1;
+		else
+			return TRIndex;
+	}
+	
+	return -1;
+}
+
+public bool:TraceRayDontHitSelf(entity, mask, any:data)
+{
+	return (entity != data); // Check if the TraceRay hit the itself.
+}
+
+stock int TF2_CreateGlow(int iEnt)
+{
+	char oldEntName[64];
+	GetEntPropString(iEnt, Prop_Data, "m_iName", oldEntName, sizeof(oldEntName));
+	
+	char strName[126], strClass[64];
+	GetEntityClassname(iEnt, strClass, sizeof(strClass));
+	Format(strName, sizeof(strName), "%s%i", strClass, iEnt);
+	DispatchKeyValue(iEnt, "targetname", strName);
+	
+	int ent = CreateEntityByName("tf_glow");
+	DispatchKeyValue(ent, "targetname", "RainbowGlow");
+	DispatchKeyValue(ent, "target", strName);
+	DispatchKeyValue(ent, "Mode", "0");
+	DispatchSpawn(ent);
+	
+	int color[4];
+	//color[0] = RoundToNearest(Cosine((GetGameTime() * 1.0) + iEnt + 0) * 127.5 + 127.5);
+	//color[1] = RoundToNearest(Cosine((GetGameTime() * 1.0) + iEnt + 2) * 127.5 + 127.5);
+	//color[2] = RoundToNearest(Cosine((GetGameTime() * 1.0) + iEnt + 4) * 127.5 + 127.5);
+	
+	color[0] = 0;
+	color[1] = 255;
+	color[2] = 0;
+	color[3] = 255;
+	
+	SetVariantColor(color);
+	AcceptEntityInput(ent, "SetGlowColor");
+	
+	AcceptEntityInput(ent, "Enable");
+	
+	//Change name back to old name because we don't need it anymore.
+	SetEntPropString(iEnt, Prop_Data, "m_iName", oldEntName);
+	
+	return ent;
+}
+
+stock bool TF2_HasGlow(int iEnt)
+{
+	int index = -1;
+	while ((index = FindEntityByClassname(index, "tf_glow")) != -1)
+	{
+		if (GetEntPropEnt(index, Prop_Send, "m_hTarget") == iEnt)
+		{
+			return true;
+		}
+	}
+	
+	return false;
+}
+public Action:OnPropTookDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
+	int cHP = GetEntProp(victim, Prop_Data, "m_iHealth");
+	if (cHP < 500 && cHP > 0 && IsValidEntity(victim)) {
+		CreateTimer(0.1, ChangeColour, victim, TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+public Action:ChangeColour(Handle:timer, any:victim) {
+	int color[4];
+	if (victim != -1 && IsValidEntity(victim)) {
+		int iGlow = TF2_CreateGlow(victim);
+		color[0] = 255;
+		color[1] = 0;
+		color[2] = 0;
+		color[3] = 255;
+		SetVariantColor(color);
+		AcceptEntityInput(iGlow, "SetGlowColor");
+	}
+}
+public Action:Human_Touch(int iEnt, int client) {
+	if (GetEntProp(client, Prop_Data, "m_nSolidType") && !(GetEntProp(client, Prop_Data, "m_usSolidFlags") & 0x0004))
+	{
+		if (IsValidClient(client) && IsPlayerAlive(client))
+		{
+			if (GetClientTeam(client) == g_iHumTeamIndex) {
+				//decl Float:iEntVector[3], Float:ClientVector[3];
+				CreateTimer(0.0, Teleport, client, TIMER_FLAG_NO_MAPCHANGE);
+				//GetEntPropVector(iEnt, Prop_Send, "m_vecOrigin", iEntVector);
+				//GetClientAbsOrigin(client, ClientVector);
+				//ClientVector[0] = ClientVector[0] + iEntVector[0];
+				//ClientVector[1] = ClientVector[1] + iEntVector[1];
+				//ClientVector[2] = ClientVector[2] + iEntVector[2];
+				//TeleportEntity(client, ClientVector, NULL_VECTOR, NULL_VECTOR);
+			}
+		}
+	}
+}
+public Action:Teleport(Handle:timer, any:client) {
+	decl Float:clientVector[3], Float:EyeAngles[3];
+	GetClientAbsOrigin(client, clientVector);
+	GetClientEyeAngles(client, EyeAngles);
+	if (EyeAngles[1] > 0) {
+		clientVector[0] = clientVector[0] + 30;
+	} else {
+		clientVector[0] = clientVector[0] - 30;
+	}
+	TeleportEntity(client, clientVector, NULL_VECTOR, NULL_VECTOR);
 } 

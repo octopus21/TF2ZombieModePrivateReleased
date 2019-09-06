@@ -83,6 +83,7 @@ public OnMapStart() {
 	ClearTimer(g_hTimer12);
 	PrecacheModel("models/props_lab/tpplug.mdl", true);
 	//PrecacheModel("models/props_farm/wooden_barrel.mdl", true);
+	//PrecacheModel("models/props_interiors/vendingmachinesoda01a.mdl", true);
 	PrecacheModel("models/props_c17/concrete_barrier001a.mdl", true);
 	PrecacheModel(MDL_LASER, true);
 	PrecacheModel(MDL_ZOMBIE, true);
@@ -93,6 +94,8 @@ public OnMapStart() {
 	PrecacheSound(SND_ZOMBIDLE01, true);
 	PrecacheSound(SND_ZOMBIDLE02, true);
 	PrecacheSound(SND_BARNACLE01, true);
+	PrecacheSound("sound/physics/concrete/concrete_break3.wav", true);
+	PrecacheSound("sound/weapons/crowbar/crowbar_impact2.wav", true);
 	//g_iMineCount[MAXPLAYERS] = 0;
 	//g_iHumanCreditProgress[MAXPLAYERS] = 0;
 	zombimod();
@@ -760,75 +763,91 @@ zombimod()
 	}
 }
 public Action:OnPlayerRunCmd(client, &buttons) {
-	int iAmount = 0;
-	if ((buttons & IN_RELOAD)) {
+	//int iAmount = 0;
+	if ((buttons & IN_RELOAD) && GetClientTeam(client) == g_iHumTeamIndex && TF2_GetPlayerClass(client) == TFClass_Engineer && GetActiveIndex(client) == 7) {
 		decl Float:VecPos_grabbed[3], Float:VecPos_client[3];
 		new looking = TraceToEntity(client);
 		PrintToChat(client, "%d", looking);
 		if (looking > 0) {
-			//PropNail(client, GetClientAimEntity(client, 50.0)); //Nailing the returned index of that stock
 			decl String:Classname[32];
 			GetEntityClassname(looking, Classname, sizeof(Classname));
-			if (!StrEqual(Classname, "prop_physics_override", false) != -1) {
+			if (!StrEqual(Classname, "prop_physics_override", false)) {
 				GetEntPropVector(looking, Prop_Send, "m_vecOrigin", VecPos_grabbed);
 				GetClientEyePosition(client, VecPos_client);
 				GetVectorDistance(VecPos_grabbed, VecPos_client);
 				PrintToConsole(client, "prop_physics_override");
 				PrintToConsole(client, "%f", VecPos_grabbed);
-				if (g_iNailedTimes[client] <= 1) {
-					PropNail(client, looking, 10);
+				if (g_iNailedTimes[client] <= 10000) {
+					PropNail(client, looking);
 				}
 				g_iNailedTimes[client]++;
 			}
-			//PrintToChat(client, "%d ", GetClientAimEntity(client, 5000000.0));
-			//AcceptEntityInput(GetClientAimEntity(client, 5000000.0), "Kill");
 		}
-	} else if ((buttons & IN_ATTACK2)) {
+	} else if ((buttons & IN_ATTACK2) && GetClientTeam(client) == g_iHumTeamIndex && TF2_GetPlayerClass(client) == TFClass_Engineer && GetActiveIndex(client) == 7) {
 		//buttons += IN_USE;
 		new looking = TraceToEntity(client);
 		decl Float:VecPos_grabbed[3], Float:VecPos_client[3];
-		decl Float:ClientOrigin[3];
-		decl Float:EyeAngles[3];
-		decl Float:vecToUse[3];
-		GetClientEyeAngles(client, EyeAngles);
-		GetClientAbsOrigin(client, ClientOrigin);
-		GetClientAbsOrigin(client, vecToUse);
+		//decl Float:ClientOrigin[3];
+		//decl Float:EyeAngles[3];
+		//decl Float:vecToUse[3];
+		//GetClientEyeAngles(client, EyeAngles);
+		//GetClientAbsOrigin(client, ClientOrigin);
+		//GetClientAbsOrigin(client, vecToUse);
+		
+		float start[3];
+		float angle[3];
+		float end[3];
+		float normal[3];
+		GetClientEyePosition(client, start);
+		GetClientEyeAngles(client, angle);
+		GetAngleVectors(angle, end, NULL_VECTOR, NULL_VECTOR);
+		NormalizeVector(end, end);
+		
 		PrintToChat(client, "%d", looking);
 		if (looking > 0) {
 			decl String:Classname[16];
 			GetEntityClassname(looking, Classname, sizeof(Classname));
-			if (!StrEqual(Classname, "prop_physics_override", false) != -1) {
+			if (!StrEqual(Classname, "prop_physics_override", false)) {
 				GetEntPropVector(looking, Prop_Send, "m_vecOrigin", VecPos_grabbed);
 				GetClientEyePosition(client, VecPos_client);
 				GetVectorDistance(VecPos_grabbed, VecPos_client);
 				PrintToConsole(client, "prop_physics_override");
 				PrintToConsole(client, "%f", VecPos_grabbed);
-				//PropNail(client, looking, iAmount++);
-				Move(looking, vecToUse, ClientOrigin, EyeAngles, iAmount++);
+				Move(looking, start, angle, end, normal);
+				//SetEntityRenderMode(looking, RENDER_NORMAL);
 			}
 		}
 		//return Plugin_Changed;
-	} else if ((buttons & IN_SPEED)) {
+	} else if ((buttons & IN_SPEED) && GetClientTeam(client) == g_iHumTeamIndex && TF2_GetPlayerClass(client) == TFClass_Engineer && GetActiveIndex(client) == 7) {
 		new looking = TraceToEntity(client);
 		decl Float:VecPos_grabbed[3], Float:VecPos_client[3];
-		decl Float:ClientOrigin[3];
-		decl Float:EyeAngles[3];
-		decl Float:vecToUse[3];
-		GetClientEyeAngles(client, EyeAngles);
-		GetClientAbsOrigin(client, ClientOrigin);
-		GetClientAbsOrigin(client, vecToUse);
+		//decl Float:ClientOrigin[3];
+		//decl Float:EyeAngles[3];
+		//decl Float:vecToUse[3];
+		//GetClientEyeAngles(client, EyeAngles);
+		//GetClientAbsOrigin(client, ClientOrigin);
+		//GetClientAbsOrigin(client, vecToUse);
+		float start[3];
+		float angle[3];
+		float end[3];
+		float normal[3];
+		GetClientEyePosition(client, start);
+		GetClientEyeAngles(client, angle);
+		GetAngleVectors(angle, end, NULL_VECTOR, NULL_VECTOR);
+		NormalizeVector(end, end);
 		PrintToChat(client, "%d", looking);
 		if (looking > 0) {
 			decl String:Classname[16];
 			GetEntityClassname(looking, Classname, sizeof(Classname));
-			if (!StrEqual(Classname, "prop_physics_override", false) != -1) {
+			if (!StrEqual(Classname, "prop_physics_override", false)) {
 				GetEntPropVector(looking, Prop_Send, "m_vecOrigin", VecPos_grabbed);
 				GetClientEyePosition(client, VecPos_client);
 				GetVectorDistance(VecPos_grabbed, VecPos_client);
 				PrintToConsole(client, "prop_physics_override");
 				PrintToConsole(client, "%f", VecPos_grabbed);
 				//PropNail(client, looking, iAmount++);
-				Move2(looking, vecToUse, ClientOrigin, EyeAngles, iAmount--);
+				Move2(looking, start, angle, end, normal);
+				//SetEntityRenderMode(looking, RENDER_NORMAL);
 			}
 		}
 	}
@@ -861,25 +880,56 @@ stock GetClientAimEntity(client, Float:distancetoentity) {
 }
 //Normal Prop
 void SetProp(client) {
-	int iEnt = CreateEntityByName("prop_physics_override");
+	int iEnt = CreateEntityByName("prop_dynamic_override"); //prop_physics_override
 	if (iEnt != -1 && IsValidEntity(iEnt)) {
 		//DispatchKeyValue(iEnt, "model", "models/props_farm/wooden_barrel.mdl");
+		//DispatchKeyValue(iEnt, "model", "models/props_interiors/vendingmachinesoda01a.mdl");
 		DispatchKeyValue(iEnt, "model", "models/props_c17/concrete_barrier001a.mdl");
 		DispatchKeyValue(iEnt, "solid", "2");
 		DispatchKeyValue(iEnt, "physdamagescale", "0.0");
-		DispatchSpawn(iEnt);
+		//DispatchSpawn(iEnt);
 		
-		decl Float:FurnitureOrigin[3];
-		decl Float:ClientOrigin[3];
-		decl Float:EyeAngles[3];
-		GetClientEyeAngles(client, EyeAngles);
-		GetClientAbsOrigin(client, ClientOrigin);
+		//decl Float:FurnitureOrigin[3];
+		//decl Float:ClientOrigin[3];
+		//decl Float:EyeAngles[3];
+		//decl Float:EyeOrigin[3];
+		//GetClientEyeAngles(client, EyeAngles);
+		//GetClientEyePosition(client, EyeOrigin);
+		//GetClientAbsOrigin(client, ClientOrigin);
+		//GetAngleVectors(EyeAngles, EyeAngles, NULL_VECTOR, NULL_VECTOR);
 		
-		FurnitureOrigin[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1]))));
-		FurnitureOrigin[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1]))));
-		FurnitureOrigin[2] = (ClientOrigin[2] + 50);
+		//FurnitureOrigin[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1]))));
+		//FurnitureOrigin[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1]))));
+		//FurnitureOrigin[2] = (ClientOrigin[2] + 50);
+		float start[3];
+		float angle[3];
+		float end[3];
+		float normal[3];
+		//float beamend[3];
+		GetClientEyePosition(client, start);
+		GetClientEyeAngles(client, angle);
+		GetAngleVectors(angle, end, NULL_VECTOR, NULL_VECTOR);
+		NormalizeVector(end, end);
 		
-		TeleportEntity(iEnt, FurnitureOrigin, NULL_VECTOR, NULL_VECTOR);
+		start[0] = start[0] + end[0] * TRACE_START;
+		start[1] = start[1] + end[1] * TRACE_START;
+		start[2] = start[2] + end[2] * TRACE_START;
+		
+		end[0] = start[0] + end[0] * TRACE_END * 10;
+		end[1] = start[1] + end[1] * TRACE_END * 10;
+		end[2] = start[2] + end[2] * TRACE_END * 10;
+		TR_TraceRayFilter(start, end, CONTENTS_SOLID, RayType_EndPoint, FilterAll, 0);
+		if (TR_DidHit(null)) {
+			TR_GetEndPosition(end, null);
+			TR_GetPlaneNormal(null, normal);
+			GetVectorAngles(normal, normal);
+			normal[0] = normal[0] * 2;
+			normal[1] = normal[1] * 2;
+			normal[2] = normal[2] * 2;
+			TeleportEntity(iEnt, end, normal, NULL_VECTOR);
+			DispatchSpawn(iEnt);
+		}
+		//TeleportEntity(iEnt, end, normal, NULL_VECTOR);
 		
 		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
 		SetEntProp(iEnt, Prop_Data, "m_iHealth", 100);
@@ -887,33 +937,36 @@ void SetProp(client) {
 	}
 }
 //We'Re making the prop nailed, and static.
-void PropNail(int client, int iEnt, int iMoveUp) {
-	decl Float:vecToUse[3];
-	decl Float:ClientOrigin[3];
-	decl Float:EyeAngles[3];
-	GetClientEyeAngles(client, EyeAngles);
-	GetClientAbsOrigin(client, ClientOrigin);
-	GetClientAbsOrigin(client, vecToUse);
+void PropNail(int client, int iEnt) {
+	//decl Float:vecToUse[3];
+	//decl Float:ClientOrigin[3];
+	//decl Float:EyeAngles[3];
+	float start[3];
+	float angle[3];
+	float end[3];
+	float flPos[3];
+	float normal[3];
+	GetClientAbsOrigin(client, flPos);
 	if (iEnt != -1 && !IsValidClient(iEnt)) {
 		AcceptEntityInput(iEnt, "Kill");
 		PrintToChatAll("You have nailed! %d", iEnt);
-		NailedProp(vecToUse, ClientOrigin, EyeAngles, iMoveUp);
+		NailedProp(client, start, angle, end, normal);
+		EmitSoundToAll("sound/weapons/crowbar/crowbar_impact2.wav", iEnt, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
 	}
 	//NailedProp(vecToUse, ClientOrigin, EyeAngles, iMoveUp);
 }
 
-void NailedProp(Float:vecToUse[3], Float:ClientOrigin[3], Float:EyeAngles[3], int iMoveUp) {
+void NailedProp(int client, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3]) {
 	int iEnt = CreateEntityByName("prop_physics_override");
 	if (iEnt != -1 && IsValidEntity(iEnt)) {
 		
 		int hp = 500;
+		//DispatchKeyValue(iEnt, "model", "models/props_interiors/vendingmachinesoda01a.mdl");
 		DispatchKeyValue(iEnt, "model", "models/props_c17/concrete_barrier001a.mdl");
 		//DispatchKeyValue(iEnt, "model", "models/props_farm/wooden_barrel.mdl");
 		DispatchKeyValue(iEnt, "solid", "2");
 		//DispatchKeyValue(iEnt, "physdamagescale", "0.0");
-		DispatchSpawn(iEnt);
-		SetEntProp(iEnt, Prop_Data, "m_iHealth", hp);
-		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
+		//DispatchSpawn(iEnt);
 		//DispatchKeyValue(iEnt, "health", "1000");
 		//SetEntProp(iEnt, Prop_Data, "m_hGlowEnt", 0);
 		SDKHook(iEnt, SDKHook_OnTakeDamage, OnPropTookDamage);
@@ -923,27 +976,95 @@ void NailedProp(Float:vecToUse[3], Float:ClientOrigin[3], Float:EyeAngles[3], in
 			TF2_CreateGlow(iEnt);
 		}
 		//SetEntityMoveType(iEnt, MOVETYPE_NONE);
-		vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
-		vecToUse[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1])))); //angle right
-		vecToUse[2] = (ClientOrigin[2] + iMoveUp); //angle height
-		TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
+		//vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
+		//vecToUse[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1])))); //angle right
+		//vecToUse[2] = (ClientOrigin[2] + iMoveUp); //angle height
+		//TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
+		GetClientEyePosition(client, start);
+		GetClientEyeAngles(client, angle);
+		GetAngleVectors(angle, end, NULL_VECTOR, NULL_VECTOR);
+		NormalizeVector(end, end);
+		start[0] = start[0] + end[0] * TRACE_START;
+		start[1] = start[1] + end[1] * TRACE_START;
+		start[2] = start[2] + end[2] * TRACE_START;
+		
+		end[0] = start[0] + end[0] * TRACE_END * 10;
+		end[1] = start[1] + end[1] * TRACE_END * 10;
+		end[2] = start[2] + end[2] * TRACE_END * 10;
+		TR_TraceRayFilter(start, end, CONTENTS_SOLID, RayType_EndPoint, FilterAll, 0);
+		if (TR_DidHit(null)) {
+			TR_GetEndPosition(end, null);
+			TR_GetPlaneNormal(null, normal);
+			GetVectorAngles(normal, normal);
+			normal[0] = normal[0] * 2;
+			normal[1] = normal[1] * 2;
+			normal[2] = normal[2] * 2;
+			//SetEntProp(iEnt, Prop_Data, "m_iHealth", hp);
+			//SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
+			TeleportEntity(iEnt, end, normal, NULL_VECTOR);
+			DispatchSpawn(iEnt);
+		}
+		SetEntProp(iEnt, Prop_Data, "m_iHealth", hp);
+		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
 		SetEntityMoveType(iEnt, MOVETYPE_NONE);
 	}
 }
-void Move(int iEnt, Float:vecToUse[3], Float:ClientOrigin[3], Float:EyeAngles[3], int iMoveUp) {
+void Move(int iEnt, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3]) {
 	if (iEnt != -1 && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
-		vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
-		vecToUse[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1])))); //angle right
-		vecToUse[2] = (ClientOrigin[2] + iMoveUp); //angle height
-		TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
+		start[0] = start[0] + end[0] * TRACE_START;
+		start[1] = start[1] + end[1] * TRACE_START;
+		start[2] = start[2] + end[2] * TRACE_START;
+		
+		end[0] = start[0] + end[0] * TRACE_END * 2;
+		end[1] = start[1] + end[1] * TRACE_END * 2;
+		end[2] = start[2] + end[2] * TRACE_END * 2;
+		TR_TraceRayFilter(start, end, CONTENTS_SOLID, RayType_EndPoint, FilterAll, 0);
+		if (TR_DidHit(null)) {
+			TR_GetEndPosition(end, null);
+			TR_GetPlaneNormal(null, normal);
+			GetVectorAngles(normal, normal);
+			normal[0] = normal[0] * angle[0] / 2;
+			normal[1] = normal[1] * angle[1] / 2;
+			normal[2] = normal[2] * angle[2] / 2;
+			TeleportEntity(iEnt, end, normal, NULL_VECTOR);
+			//SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
+			//SetEntityRenderMode(iEnt, RENDER_NONE);
+		}
 	}
 }
-void Move2(int iEnt, Float:vecToUse[3], Float:ClientOrigin[3], Float:EyeAngles[3], int iMoveUp) {
+/*
+public Action:Hook_SetTransmit(entity, client) {
+	if (entity != client) {
+		return Plugin_Handled;
+	}
+	return Plugin_Continue;
+}
+*/
+void Move2(int iEnt, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3]) {
 	if (iEnt != -1 && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
-		vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
-		vecToUse[1] = (ClientOrigin[1] + (iMoveUp * 10 * Sine(DegToRad(EyeAngles[1])))); //angle right
-		vecToUse[2] = (ClientOrigin[2] + iMoveUp); //angle height
-		TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
+		start[0] = start[0] + end[0] * TRACE_START;
+		start[1] = start[1] + end[1] * TRACE_START;
+		start[2] = start[2] + end[2] * TRACE_START;
+		
+		end[0] = start[0] + end[0] * TRACE_END * 10;
+		end[1] = start[1] + end[1] * TRACE_END * 10;
+		end[2] = start[2] + end[2] * TRACE_END * 10;
+		TR_TraceRayFilter(start, end, CONTENTS_SOLID, RayType_EndPoint, FilterAll, 0);
+		if (TR_DidHit(null)) {
+			TR_GetEndPosition(end, null);
+			TR_GetPlaneNormal(null, normal);
+			GetVectorAngles(normal, normal);
+			normal[0] = normal[0] * 2;
+			normal[1] = normal[1] * 2;
+			normal[2] = normal[2] * 2;
+			//SetEntProp(iEnt, Prop_Data, "m_iHealth", hp);
+			//SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
+			TeleportEntity(iEnt, end, normal, NULL_VECTOR);
+		}
+		//vecToUse[0] = (ClientOrigin[0] + (100 * Cosine(DegToRad(EyeAngles[1])))); //angle forward
+		//vecToUse[1] = (ClientOrigin[1] + (100 * Sine(DegToRad(EyeAngles[1])))); //angle right
+		//vecToUse[2] = (ClientOrigin[2] + 10);
+		//TeleportEntity(iEnt, vecToUse, NULL_VECTOR, NULL_VECTOR);
 	}
 }
 TraceToEntity(client)
@@ -1029,9 +1150,23 @@ stock bool TF2_HasGlow(int iEnt)
 }
 public Action:OnPropTookDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
 	int cHP = GetEntProp(victim, Prop_Data, "m_iHealth");
+	float flPos[3];
+	GetClientAbsOrigin(attacker, flPos);
+	if (GetClientTeam(attacker) == g_iHumTeamIndex) {
+		PrintHintText(attacker, "PropHealth:%d", cHP);
+		switch (TF2_GetPlayerClass(attacker)) {
+			case TFClass_Engineer: {
+				SetEntProp(victim, Prop_Data, "m_iHealth", cHP + 60);
+			}
+		}
+	}
+	if (IsValidClient(attacker)) {
+		EmitSoundToAll("sound/physics/concrete/concrete_break3.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, attacker, flPos, NULL_VECTOR, true, 0.0);
+	}
 	if (cHP < 500 && cHP > 0 && IsValidEntity(victim)) {
 		CreateTimer(0.1, ChangeColour, victim, TIMER_FLAG_NO_MAPCHANGE);
 	}
+	
 }
 public Action:ChangeColour(Handle:timer, any:victim) {
 	int color[4];
@@ -1073,4 +1208,8 @@ public Action:Teleport(Handle:timer, any:client) {
 		clientVector[0] = clientVector[0] - 30;
 	}
 	TeleportEntity(client, clientVector, NULL_VECTOR, NULL_VECTOR);
+}
+stock GetActiveIndex(iClient)
+{
+	return GetWeaponIndex(GetEntPropEnt(iClient, Prop_Send, "m_hActiveWeapon"));
 } 

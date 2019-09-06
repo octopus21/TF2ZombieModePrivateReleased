@@ -889,7 +889,7 @@ public Action:silah(Handle:timer, any:client)
 	{
 		for (new i = 0; i <= 5; i++)
 		{
-			if (client > 0 && i != 2 && GetClientTeam(client) == g_iZomTeamIndex && i != 4) //Zombie, client
+			if (client > 0 && i != 2 && GetClientTeam(client) == g_iZomTeamIndex) //Zombie, client
 			{
 				TF2_RemoveWeaponSlot(client, i);
 			}
@@ -897,11 +897,11 @@ public Action:silah(Handle:timer, any:client)
 		if (client > 0 && GetClientTeam(client) == g_iZomTeamIndex)
 		{
 			new slot2 = GetPlayerWeaponSlot(client, 2);
-			new slot4 = GetPlayerWeaponSlot(client, 4);
-			if (IsValidEdict(slot2) && IsValidEdict(slot4))
+			//new slot4 = GetPlayerWeaponSlot(client, 4);
+			if (IsValidEdict(slot2))
 			{
 				EquipPlayerWeapon(client, slot2);
-				EquipPlayerWeapon(client, slot4);
+				//EquipPlayerWeapon(client, slot4);
 			}
 		}
 	}

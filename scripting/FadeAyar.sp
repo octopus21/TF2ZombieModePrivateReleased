@@ -948,21 +948,23 @@ void PropNail(int client, int iEnt) {
 	float normal[3];
 	GetClientAbsOrigin(client, flPos);
 	if (iEnt != -1 && !IsValidClient(iEnt)) {
+		new String:m_ModelName[64];
+		GetEntPropString(iEnt, Prop_Data, "m_ModelName", m_ModelName, sizeof(m_ModelName));
 		AcceptEntityInput(iEnt, "Kill");
 		PrintToChatAll("You have nailed! %d", iEnt);
-		NailedProp(client, start, angle, end, normal);
+		NailedProp(client, start, angle, end, normal, m_ModelName);
 		EmitSoundToAll("sound/weapons/crowbar/crowbar_impact2.wav", iEnt, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, client, flPos, NULL_VECTOR, true, 0.0);
 	}
 	//NailedProp(vecToUse, ClientOrigin, EyeAngles, iMoveUp);
 }
-
-void NailedProp(int client, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3]) {
+void NailedProp(int client, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3], String:strModelName[]) {
 	int iEnt = CreateEntityByName("prop_physics_override");
 	if (iEnt != -1 && IsValidEntity(iEnt)) {
 		
 		int hp = 500;
 		//DispatchKeyValue(iEnt, "model", "models/props_interiors/vendingmachinesoda01a.mdl");
-		DispatchKeyValue(iEnt, "model", "models/props_c17/concrete_barrier001a.mdl");
+		//DispatchKeyValue(iEnt, "model", "models/props_c17/concrete_barrier001a.mdl");
+		DispatchKeyValue(iEnt, "model", strModelName);
 		//DispatchKeyValue(iEnt, "model", "models/props_farm/wooden_barrel.mdl");
 		DispatchKeyValue(iEnt, "solid", "2");
 		//DispatchKeyValue(iEnt, "physdamagescale", "0.0");
@@ -1151,7 +1153,7 @@ stock bool TF2_HasGlow(int iEnt)
 public Action:OnPropTookDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
 	int cHP = GetEntProp(victim, Prop_Data, "m_iHealth");
 	float flPos[3];
-	GetClientAbsOrigin(attacker, flPos);
+	//GetClientAbsOrigin(attacker, flPos);
 	if (GetClientTeam(attacker) == g_iHumTeamIndex) {
 		PrintHintText(attacker, "PropHealth:%d", cHP);
 		switch (TF2_GetPlayerClass(attacker)) {
@@ -1161,7 +1163,9 @@ public Action:OnPropTookDamage(victim, &attacker, &inflictor, &Float:damage, &da
 		}
 	}
 	if (IsValidClient(attacker)) {
+		GetClientAbsOrigin(attacker, flPos);
 		EmitSoundToAll("sound/physics/concrete/concrete_break3.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, attacker, flPos, NULL_VECTOR, true, 0.0);
+		//GetClientAbsOrigin(attacker, flPos);
 	}
 	if (cHP < 500 && cHP > 0 && IsValidEntity(victim)) {
 		CreateTimer(0.1, ChangeColour, victim, TIMER_FLAG_NO_MAPCHANGE);

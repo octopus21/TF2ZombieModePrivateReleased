@@ -18,6 +18,10 @@ bool g_bHoldingProp[MAXENTITIES + 1] =  { false, ... };
 bool g_bReleasingProp[MAXENTITIES + 1] =  { false, ... };
 bool g_bNailed[MAXENTITIES + 1] =  { false, ... };
 
+int g_iMapPrefixType;
+int g_iZomTeamIndex;
+int g_iHumTeamIndex;
+
 public Plugin myinfo = 
 {
 	name = "", 
@@ -31,6 +35,10 @@ public void OnPluginStart()
 {
 	
 }
+public void OnMapStart() {
+	zombimod();
+	logGameRuleTeamRegister();
+}
 public Action:OnPlayerRunCmd(client, &buttons) {
 	if ((buttons & IN_ATTACK2)) {
 		int TracedEntity = TraceRayToEntity(client, 80.0);
@@ -39,7 +47,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			GetEntityClassname(TracedEntity, ClassName, sizeof(ClassName));
 			PrintHintText(client, "Looking at:%d / ClassName:%s", TracedEntity, ClassName);
 			if (FindEntityByClassname(TracedEntity, "prop_physics") != -1) {
-				if (TF2_GetPlayerClass(client) == TFClass_Engineer) {
+				if (TF2_GetPlayerClass(client) == TFClass_Engineer && GetClientTeam(client) == g_iHumTeamIndex) {
 					if (GetActiveIndex(client) == 7) {  //Using stock Wrench
 						PropToNail(TracedEntity);
 						AcceptEntityInput(TracedEntity, "EnableCollision");
@@ -69,7 +77,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 			GetEntityClassname(TracedEntity, ClassName, sizeof(ClassName));
 			PrintHintText(client, "Moving:%d / ClassName:%s", TracedEntity, ClassName);
 			if (FindEntityByClassname(TracedEntity, "prop_physics") != -1) {
-				if (TF2_GetPlayerClass(client) == TFClass_Engineer && GetActiveIndex(client) == 7) {
+				if (TF2_GetPlayerClass(client) == TFClass_Engineer && GetActiveIndex(client) == 7 && GetClientTeam(client) == g_iHumTeamIndex) {
 					if (TF2_HasGlow(TracedEntity) && !g_bNailed[TracedEntity]) {  //Were targetting node props %100.
 						Move2(TracedEntity, start, angle, end, normal, 20);
 						g_bReleasingProp[TracedEntity] = false;
@@ -90,7 +98,7 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 		if (TracedEntityToDrop > 0) {
 			if (g_bHoldingProp[TracedEntityToDrop]) {
 				g_bReleasingProp[TracedEntityToDrop] = true;
-				if (g_bReleasingProp[TracedEntityToDrop] && !g_bNailed[TracedEntityToDrop]) {
+				if (g_bReleasingProp[TracedEntityToDrop] && !g_bNailed[TracedEntityToDrop] && GetClientTeam(client) != g_iZomTeamIndex) {
 					Drop(TracedEntityToDrop, clientOrigin, vecToPush, EyeAnglesOfClient);
 					g_bReleasingProp[TracedEntityToDrop] = false;
 				}
@@ -331,3 +339,37 @@ public Action:Teleport(Handle:timer, any:client) {
 	TeleportEntity(client, clientVector, NULL_VECTOR, NULL_VECTOR);
 }
 */
+logGameRuleTeamRegister() {  //Registers the Team indexes (Most likely usage for OnMapStart() )
+	if (g_iMapPrefixType == 1 || g_iMapPrefixType == 2) {
+		g_iZomTeamIndex = 3; //We'll set Blue team as a zombie for those maps
+		g_iHumTeamIndex = 2; //We'll set Red team as a human for those maps
+	} //If the map is ZF or ZM 
+	else if (g_iMapPrefixType == 3 || g_iMapPrefixType == 4 || g_iMapPrefixType == 5 || g_iMapPrefixType == 6) {
+		g_iZomTeamIndex = 2; //We'll set Red team as a zombie for those maps
+		g_iHumTeamIndex = 3; //We'll set Blue team as a zombie for those maps
+	} // If the map is ZM, ZS, ZOM, ZE
+}
+zombimod()
+{
+	g_iMapPrefixType = 0;
+	decl String:mapv[32];
+	GetCurrentMap(mapv, sizeof(mapv));
+	if (!StrContains(mapv, "zf_", false)) {
+		g_iMapPrefixType = 1;
+	}
+	else if (!StrContains(mapv, "szf_", false)) {
+		g_iMapPrefixType = 2;
+	}
+	else if (!StrContains(mapv, "zm_", false)) {
+		g_iMapPrefixType = 3;
+	}
+	else if (!StrContains(mapv, "zom_", false)) {
+		g_iMapPrefixType = 4;
+	}
+	else if (!StrContains(mapv, "zs_", false)) {
+		g_iMapPrefixType = 5;
+	}
+	else if (!StrContains(mapv, "ze_", false)) {
+		g_iMapPrefixType = 6;
+	}
+} 

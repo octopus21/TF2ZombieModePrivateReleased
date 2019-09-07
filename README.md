@@ -2,7 +2,7 @@
 TF2ZombieModePrivate
 
 
-Note: # You don't have to ADD DATA FILE TO YOUR SERVER!
+Note: # You HAVE TO ADD nodes.txt TO YOUR SERVER  you can REMOVE THE REST OF THE DATA.
 
 Works with Every Z prefixed maps.
 For example in ZF OR SZF MAPS

@@ -14,6 +14,7 @@
 #define TRACE_START 24.0
 #define TRACE_END 64.0 //64.0
 #define MAXENTITIES 2048
+
 bool g_bHoldingProp[MAXENTITIES + 1] =  { false, ... };
 bool g_bReleasingProp[MAXENTITIES + 1] =  { false, ... };
 bool g_bNailed[MAXENTITIES + 1] =  { false, ... };
@@ -38,6 +39,18 @@ public void OnPluginStart()
 public void OnMapStart() {
 	zombimod();
 	logGameRuleTeamRegister();
+	for (new i = 0; i <= MAXENTITIES; i++) {
+		g_bHoldingProp[i] = false;
+		g_bReleasingProp[i] = false;
+		g_bNailed[i] = false;
+	}
+}
+public void OnMapEnd() {
+	for (new i = 0; i <= MAXENTITIES; i++) {
+		g_bHoldingProp[i] = false;
+		g_bReleasingProp[i] = false;
+		g_bNailed[i] = false;
+	}
 }
 public Action:OnPlayerRunCmd(client, &buttons) {
 	if ((buttons & IN_ATTACK2)) {
@@ -71,22 +84,35 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 		GetAngleVectors(angle, end, NULL_VECTOR, NULL_VECTOR);
 		NormalizeVector(end, end);
 		
-		int TracedEntity = TraceRayToEntity(client, 480.0);
+		int TracedEntity = TraceRayToEntity(client, 180.0);
 		if (TracedEntity > 0) {
 			decl String:ClassName[32];
 			GetEntityClassname(TracedEntity, ClassName, sizeof(ClassName));
-			PrintHintText(client, "Moving:%d / ClassName:%s", TracedEntity, ClassName);
+			//PrintHintText(client, "Moving:%d / ClassName:%s", TracedEntity, ClassName);
 			if (FindEntityByClassname(TracedEntity, "prop_physics") != -1) {
 				if (TF2_GetPlayerClass(client) == TFClass_Engineer && GetActiveIndex(client) == 7 && GetClientTeam(client) == g_iHumTeamIndex) {
 					if (TF2_HasGlow(TracedEntity) && !g_bNailed[TracedEntity]) {  //Were targetting node props %100.
-						Move2(TracedEntity, start, angle, end, normal, 20);
+						Move2(TracedEntity, start, angle, end, normal, 2);
 						g_bReleasingProp[TracedEntity] = false;
 					}
 				}
 			}
 		}
+	} else {
+		int TracedEntity = TraceRayToEntity(client, 180.0);
+		if (TracedEntity > 0) {
+			SDKHook(TracedEntity, SDKHook_ShouldCollide, ShouldCollideOnDrop);
+			if (IsPlayerStuckInEnt(client, TracedEntity) && GetClientTeam(client) == g_iHumTeamIndex) {
+				if ((buttons & IN_RELOAD)) {
+					SDKHook(TracedEntity, SDKHook_ShouldCollide, ShouldCollide);
+				}
+			}
+			else if (!IsPlayerStuckInEnt(client, TracedEntity) && GetClientTeam(client) == g_iHumTeamIndex) {
+				SDKHook(TracedEntity, SDKHook_ShouldCollide, ShouldCollideOnDrop);
+			}
+		}
 	}
-	else if ((buttons & IN_ZOOM)) {
+	if ((buttons & IN_ZOOM)) {
 		float clientOrigin[3];
 		float vecToPush[3];
 		float EyeAnglesOfClient[3];
@@ -94,17 +120,32 @@ public Action:OnPlayerRunCmd(client, &buttons) {
 		GetClientAbsOrigin(client, clientOrigin);
 		GetClientEyeAngles(client, EyeAnglesOfClient);
 		
-		int TracedEntityToDrop = TraceRayToEntity(client, 480.0);
+		int TracedEntityToDrop = TraceRayToEntity(client, 180.0);
 		if (TracedEntityToDrop > 0) {
 			if (g_bHoldingProp[TracedEntityToDrop]) {
 				g_bReleasingProp[TracedEntityToDrop] = true;
 				if (g_bReleasingProp[TracedEntityToDrop] && !g_bNailed[TracedEntityToDrop] && GetClientTeam(client) != g_iZomTeamIndex) {
 					Drop(TracedEntityToDrop, clientOrigin, vecToPush, EyeAnglesOfClient);
+					SDKHook(TracedEntityToDrop, SDKHook_ShouldCollide, ShouldCollideOnDrop);
 					g_bReleasingProp[TracedEntityToDrop] = false;
 				}
 			}
+			if (IsPlayerStuckInEnt(client, TracedEntityToDrop) && g_bNailed[TracedEntityToDrop] && GetClientTeam(client) == g_iHumTeamIndex) {
+				float iPosition[3];
+				GetClientEyePosition(client, iPosition);
+				iPosition[0] += 0.001;
+				//TeleportEntity(client, iPosition, NULL_VECTOR, NULL_VECTOR);
+				AcceptEntityInput(TracedEntityToDrop, "DisableCollision");
+			}
+			else if (!IsPlayerStuckInEnt(client, TracedEntityToDrop) && g_bNailed[TracedEntityToDrop] && GetClientTeam(client) == g_iHumTeamIndex) {
+				AcceptEntityInput(TracedEntityToDrop, "EnableCollision");
+			}
 		}
 	}
+}
+public bool ShouldCollideOnDrop(int entity, int collisiongroup, int contentsmask, bool result) {
+	result = true;
+	return true;
 }
 stock TraceRayToEntity(int iClient, float Distance) {
 	float vecEyeAngle[3];
@@ -136,6 +177,7 @@ PropToNail(iEnt) {
 		SetEntProp(iEnt, Prop_Data, "m_iHealth", 700);
 		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
 		SetEntityMoveType(iEnt, MOVETYPE_NONE); //Let's Freeze That Prop
+		//TF2_HasGlow(iEnt);
 		TF2_CreateGlow(iEnt); //Let's create Outline (green)
 		g_bNailed[iEnt] = true;
 		SetVariantInt(255);
@@ -185,6 +227,7 @@ stock bool TF2_HasGlow(int iEnt)
 	{
 		if (GetEntPropEnt(index, Prop_Send, "m_hTarget") == iEnt)
 		{
+			//AcceptEntityInput(index, "Kill");
 			return true;
 			//AcceptEntityInput(index, "Kill");
 		}
@@ -201,14 +244,14 @@ stock GetWeaponIndex(iWeapon)
 	return IsValidEntity(iWeapon) ? GetEntProp(iWeapon, Prop_Send, "m_iItemDefinitionIndex"):-1;
 }
 void Move2(int iEnt, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3], int Multiplier) {
-	if (iEnt != -1 && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
-		start[0] = start[0] + end[0] * TRACE_START * 2.5;
-		start[1] = start[1] + end[1] * TRACE_START * 2.5;
-		start[2] = start[2] + end[2] * TRACE_START * 2.5;
+	if (iEnt == iEnt && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
+		start[0] = start[0] + end[0] * TRACE_START;
+		start[1] = start[1] + end[1] * TRACE_START;
+		start[2] = start[2] + end[2] * TRACE_START;
 		
-		end[0] = start[0] + end[0] * TRACE_END * Multiplier * 2;
-		end[1] = start[1] + end[1] * TRACE_END * Multiplier * 2;
-		end[2] = start[2] + end[2] * TRACE_END * Multiplier * 2;
+		end[0] = start[0] + end[0] * TRACE_END * Multiplier;
+		end[1] = start[1] + end[1] * TRACE_END * Multiplier;
+		end[2] = start[2] + end[2] * TRACE_END * Multiplier;
 		TR_TraceRayFilter(start, end, CONTENTS_SOLID, RayType_EndPoint, TraceRayHitSelf, 0);
 		if (TR_DidHit(null)) {
 			TR_GetEndPosition(end, null);
@@ -217,7 +260,8 @@ void Move2(int iEnt, Float:start[3], Float:angle[3], Float:end[3], Float:normal[
 			normal[0] = normal[0] * 2;
 			normal[1] = normal[1] * 2;
 			normal[2] = normal[2] * 2;
-			AcceptEntityInput(iEnt, "DisableCollision");
+			//AcceptEntityInput(iEnt, "DisableCollision");
+			SDKHook(iEnt, SDKHook_ShouldCollide, ShouldCollide);
 			SetEntityRenderMode(iEnt, RENDER_TRANSALPHA);
 			SetVariantInt(120);
 			AcceptEntityInput(iEnt, "alpha");
@@ -225,6 +269,10 @@ void Move2(int iEnt, Float:start[3], Float:angle[3], Float:end[3], Float:normal[
 			TeleportEntity(iEnt, end, NULL_VECTOR, NULL_VECTOR);
 		}
 	}
+}
+public bool ShouldCollide(int entity, int collisiongroup, int contentsmask, bool result) {
+	result = false;
+	return false;
 }
 void Drop(int iEnt, Float:vecToBase[3], Float:vecToPush[3], Float:EyeAngles[3]) {
 	if (iEnt != -1 && !IsValidClient(iEnt)) {
@@ -372,4 +420,21 @@ zombimod()
 	else if (!StrContains(mapv, "ze_", false)) {
 		g_iMapPrefixType = 6;
 	}
+}
+stock bool IsPlayerStuckInEnt(int client, int ent)
+{
+	float vecMin[3], vecMax[3], vecOrigin[3];
+	
+	GetClientMins(client, vecMin);
+	GetClientMaxs(client, vecMax);
+	
+	GetClientEyeAngles(client, vecOrigin);
+	
+	TR_TraceHullFilter(vecOrigin, vecOrigin, vecMin, vecMax, MASK_ALL, TraceRayHitOnlyEnt, ent);
+	return TR_DidHit();
+}
+
+public bool TraceRayHitOnlyEnt(int entity, int contentsMask, any data)
+{
+	return entity == data;
 } 

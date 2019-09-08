@@ -694,24 +694,18 @@ public bool FilterAll(int entity, int contentsMask)
 
 public void MineLaser_OnTouch(const char[] output, int ent2, int iActivator, float delay)
 {
-	new currentHealthOfActivator = GetClientHealth(iActivator);
 	AcceptEntityInput(ent2, "TurnOff");
 	AcceptEntityInput(ent2, "TurnOn");
 	float vOrigin[3];
 	GetClientAbsOrigin(iActivator, vOrigin);
 	if (GetClientTeam(iActivator) == g_iZomTeamIndex) {
-		//AcceptEntityInput(ent2, "break"); //We have to add this if we want to destroy the mine and explode it.
-		//AcceptEntityInput(ent2, "kill"); //We have to add this if we want to destroy the mine and explode it.
-		PrintToConsole(iActivator, "touch zombie");
-		SetEntityHealth(iActivator, currentHealthOfActivator - 1);
-		TF2_StunPlayer(iActivator, 0.1, 0.80, TF_STUNFLAG_SLOWDOWN);
-		TF2_IgnitePlayer(iActivator, iActivator);
-		return Plugin_Handled; //We have to remove this if we want to destroy the mine and explode it.
+		AcceptEntityInput(ent2, "break"); //We have to add this if we want to destroy the mine and explode it.
+		AcceptEntityInput(ent2, "kill"); //We have to add this if we want to destroy the mine and explode it.
 	} else {
 		PrintToConsole(iActivator, "touch insan");
 		return Plugin_Handled;
 	}
-	//return Plugin_Continue;
+	return Plugin_Continue;
 }
 
 

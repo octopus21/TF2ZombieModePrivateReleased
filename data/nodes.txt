@@ -5,17 +5,19 @@
 		"1"		"-2105.962402---122.564110---350.968689--models/props_c17/chair_office01a.mdl"
 		"2"		"-1336.461060---248.242081---254.968689--models/props_c17/furniturecouch001a.mdl"
 		"3"		"-2039.937500---378.355072---350.968689--models/props_c17/tv_monitor01.mdl"
-		"4"		"-2130.895752---233.738358---350.968689--models/props_c17/utilitypole01d.mdl"
+		"4"		"-2130.895752---233.738358---350.968689--models/props_c17/concrete_barrier001a.mdl"
 		"5"		"-1948.625000---398.190643---350.968689--models/props_farm/wooden_barrel.mdl"
 		"6"		"-1948.625000---398.190643---350.968689--models/props_c17/concrete_barrier001a.mdl"
+		"7"		"-1911.373657---81.211754---347.968689--models/props_c17/furniturecouch001a.mdl"
 	}
 	"zom_floating_city_v1"
 	{
-		"1"		"1527.962158--1388.640381--80.031319--models/props_c17/concrete_barrier001a.mdl"
-		"2"		"1626.134521--1353.468140--80.031319--models/props_farm/wooden_barrel.mdl"
-		"3"		"1626.134521--1353.468140--80.031319--models/props_farm/wooden_barrel.mdl"
-		"4"		"1626.134521--1353.468140--80.031319--models/props_farm/wooden_barrel.mdl"
-		"5"		"1626.134521--1353.468140--80.031319--models/props_farm/wooden_barrel.mdl"
-		"6"		"1626.134521--1353.468140--80.031319--models/props_farm/wooden_barrel.mdl"
+		"1"		"-2105.962402---122.564110---350.968689--models/props_c17/chair_office01a.mdl"
+		"2"		"-1336.461060---248.242081---254.968689--models/props_c17/furniturecouch001a.mdl"
+		"3"		"-2039.937500---378.355072---350.968689--models/props_c17/tv_monitor01.mdl"
+		"4"		"-2130.895752---233.738358---350.968689--models/props_c17/concrete_barrier001a.mdl"
+		"5"		"-1948.625000---398.190643---350.968689--models/props_farm/wooden_barrel.mdl"
+		"6"		"-1948.625000---398.190643---350.968689--models/props_c17/concrete_barrier001a.mdl"
+		"7"		"-1911.373657---81.211754---347.968689--models/props_c17/furniturecouch001a.mdl"
 	}
 }

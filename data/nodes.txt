@@ -2,22 +2,22 @@
 {
 	"zom_military_rm"
 	{
-		"1"		"-2105.962402---122.564110---350.968689--models/props_c17/chair_office01a.mdl"
-		"2"		"-1336.461060---248.242081---254.968689--models/props_c17/furniturecouch001a.mdl"
-		"3"		"-2039.937500---378.355072---350.968689--models/props_c17/tv_monitor01.mdl"
-		"4"		"-2130.895752---233.738358---350.968689--models/props_c17/concrete_barrier001a.mdl"
-		"5"		"-1948.625000---398.190643---350.968689--models/props_farm/wooden_barrel.mdl"
-		"6"		"-1948.625000---398.190643---350.968689--models/props_c17/concrete_barrier001a.mdl"
-		"7"		"-1911.373657---81.211754---347.968689--models/props_c17/furniturecouch001a.mdl"
+		"1"		"-2105.962402---122.564110---350.968689--models/props_c17/chair_office01a.mdl--450"
+		"2"		"-1336.461060---248.242081---254.968689--models/props_c17/furniturecouch001a.mdl--980"
+		"3"		"-2039.937500---378.355072---350.968689--models/props_c17/tv_monitor01.mdl--250"
+		"4"		"-2130.895752---233.738358---350.968689--models/props_c17/concrete_barrier001a.mdl--700"
+		"5"		"-1948.625000---398.190643---350.968689--models/props_farm/wooden_barrel.mdl--700"
+		"6"		"-1948.625000---398.190643---350.968689--models/props_c17/concrete_barrier001a.mdl--700"
+		"7"		"-1911.373657---81.211754---347.968689--models/props_c17/furniturecouch001a.mdl--980"
 	}
 	"zom_floating_city_v1"
 	{
-		"1"		"-2105.962402---122.564110---350.968689--models/props_c17/chair_office01a.mdl"
-		"2"		"-1336.461060---248.242081---254.968689--models/props_c17/furniturecouch001a.mdl"
-		"3"		"-2039.937500---378.355072---350.968689--models/props_c17/tv_monitor01.mdl"
-		"4"		"-2130.895752---233.738358---350.968689--models/props_c17/concrete_barrier001a.mdl"
-		"5"		"-1948.625000---398.190643---350.968689--models/props_farm/wooden_barrel.mdl"
-		"6"		"-1948.625000---398.190643---350.968689--models/props_c17/concrete_barrier001a.mdl"
-		"7"		"-1911.373657---81.211754---347.968689--models/props_c17/furniturecouch001a.mdl"
+		"1"		"-2105.962402---122.564110---350.968689--models/props_c17/chair_office01a.mdl--450"
+		"2"		"-1336.461060---248.242081---254.968689--models/props_c17/furniturecouch001a.mdl--980"
+		"3"		"-2039.937500---378.355072---350.968689--models/props_c17/tv_monitor01.mdl--250"
+		"4"		"-2130.895752---233.738358---350.968689--models/props_c17/concrete_barrier001a.mdl--700"
+		"5"		"-1948.625000---398.190643---350.968689--models/props_farm/wooden_barrel.mdl--700"
+		"6"		"-1948.625000---398.190643---350.968689--models/props_c17/concrete_barrier001a.mdl--700"
+		"7"		"-1911.373657---81.211754---347.968689--models/props_c17/furniturecouch001a.mdl--980"
 	}
 }

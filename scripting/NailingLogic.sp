@@ -173,8 +173,7 @@ public bool:TraceRayHitSelf(entity, mask, any:data) {
 }
 PropToNail(iEnt) {
 	FindEntityByClassname(iEnt, "prop_physics"); //Double Checking.
-	if (iEnt != -1 && IsValidEntity(iEnt)) {
-		SetEntProp(iEnt, Prop_Data, "m_iHealth", 700);
+	if (iEnt != -1 && IsValidEntity(iEnt) && !g_bNailed[iEnt]) {
 		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
 		SetEntityMoveType(iEnt, MOVETYPE_NONE); //Let's Freeze That Prop
 		//TF2_HasGlow(iEnt);
@@ -182,7 +181,7 @@ PropToNail(iEnt) {
 		g_bNailed[iEnt] = true;
 		SetVariantInt(255);
 		AcceptEntityInput(iEnt, "alpha");
-		EmitSoundToAll("sound/weapons/crowbar/crowbar_impact2.wav");
+		EmitSoundToAll("weapons/crowbar/crowbar_impact2.wav");
 	}
 }
 

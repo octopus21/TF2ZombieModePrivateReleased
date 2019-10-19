@@ -94,8 +94,8 @@ public OnMapStart() {
 	PrecacheSound(SND_ZOMBIDLE01, true);
 	PrecacheSound(SND_ZOMBIDLE02, true);
 	PrecacheSound(SND_BARNACLE01, true);
-	PrecacheSound("sound/physics/concrete/concrete_break3.wav", true);
-	PrecacheSound("sound/weapons/crowbar/crowbar_impact2.wav", true);
+	PrecacheSound("physics/concrete/concrete_break3.wav", true);
+	PrecacheSound("weapons/crowbar/crowbar_impact2.wav", true);
 	//g_iMineCount[MAXPLAYERS] = 0;
 	//g_iHumanCreditProgress[MAXPLAYERS] = 0;
 	zombimod();

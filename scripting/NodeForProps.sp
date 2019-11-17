@@ -45,6 +45,7 @@ public void OnPluginStart()
 	}
 }
 //This does not spawn the prop.
+
 public OnMapStart() {
 	NodeSave();
 	for (new i = 1; i < 200; i++) {
@@ -54,6 +55,7 @@ public OnMapStart() {
 		}
 	}
 }
+
 //We'Ve added this thats why'
 public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast) {
 	for (new i = 1; i < 200; i++) {
@@ -110,6 +112,7 @@ public NodeSave() {
 //THE MAP OF READING THE DATA TXT.
 //PLUGIN READS LIKE THIS, OK?
 //RULES, EVERY MAP HAS TO BE HAVE SAME AMOUNT OF PROP NODES!
+//ADD NODES FOR EACH MAP OTHERWİSE PLUGIN WILL USE THE OLD NODES!
 
 /*
 "Nodes"
@@ -132,7 +135,9 @@ public void RegisterProps(propid) {
 	int iMultiplier = 1;
 	int iEnt = CreateEntityByName("prop_physics_override");
 	float vecPos_Ent[200][3];
-	if (iEnt != -1 && IsValidEntity(iEnt)) {
+	char currentMap[64];
+	GetCurrentMap(currentMap, sizeof(currentMap));
+	if (iEnt != -1 && IsValidEntity(iEnt)) {  // Make Sure the map is not garry's mod map.I need to check the maps first. 
 		
 		DispatchKeyValue(iEnt, "model", IndexToReadFromNode[propid][3]);
 		DispatchKeyValue(iEnt, "solid", "2");

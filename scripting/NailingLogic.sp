@@ -11,6 +11,7 @@
 #include <tf2_stocks>
 #include <sdkhooks>
 
+
 #define TRACE_START 24.0
 #define TRACE_END 64.0 //64.0
 #define MAXENTITIES 2048
@@ -34,11 +35,12 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	
+	HookEvent("teamplay_round_start", OnRound);
 }
 public void OnMapStart() {
 	zombimod();
 	logGameRuleTeamRegister();
+	PrecacheSound("physics/concrete/concrete_break3.wav", true);
 	for (new i = 0; i <= MAXENTITIES; i++) {
 		g_bHoldingProp[i] = false;
 		g_bReleasingProp[i] = false;
@@ -52,23 +54,45 @@ public void OnMapEnd() {
 		g_bNailed[i] = false;
 	}
 }
+public Action:OnRound(Handle:event, const String:name[], bool:dontBroadcast) {
+	for (new i = 0; i <= MAXENTITIES; i++) {
+		g_bHoldingProp[i] = false;
+		g_bReleasingProp[i] = false;
+		g_bNailed[i] = false;
+	}
+}
 public Action:OnPlayerRunCmd(client, &buttons) {
 	if ((buttons & IN_ATTACK2)) {
 		int TracedEntity = TraceRayToEntity(client, 80.0);
 		if (TracedEntity > 0) {  // Could be -1, were being more secure.
 			decl String:ClassName[32];
 			GetEntityClassname(TracedEntity, ClassName, sizeof(ClassName));
-			PrintHintText(client, "Looking at:%d / ClassName:%s", TracedEntity, ClassName);
+			if (g_bNailed[TracedEntity]) {
+				PrintHintText(client, "Looking at:%d / ClassName:%s / It's nailed!", TracedEntity, ClassName);
+			}
 			if (FindEntityByClassname(TracedEntity, "prop_physics") != -1) {
 				if (TF2_GetPlayerClass(client) == TFClass_Engineer && GetClientTeam(client) == g_iHumTeamIndex) {
-					if (GetActiveIndex(client) == 7) {  //Using stock Wrench
+					if (GetActiveIndex(client) == 7 && !g_bNailed[TracedEntity]) {  //Using stock Wrench
 						PropToNail(TracedEntity);
 						AcceptEntityInput(TracedEntity, "EnableCollision");
 						SetVariantInt(255);
 						AcceptEntityInput(TracedEntity, "alpha");
 						g_bHoldingProp[TracedEntity] = false;
 						g_bReleasingProp[TracedEntity] = false; // Cuz it's nailed.
+						PrintHintText(client, "Looking at:%d / ClassName:%s", TracedEntity, ClassName);
 					}
+				}
+			}
+		}
+	}
+	else if ((buttons & IN_ATTACK)) {
+		int TracedEntity = TraceRayToEntity(client, 80.0);
+		if (TracedEntity > 0) {
+			char ClassName[32];
+			GetEntityClassname(TracedEntity, ClassName, sizeof(ClassName));
+			if (FindEntityByClassname(TracedEntity, "prop_physics") != -1) {
+				if (GetClientTeam(client) == g_iZomTeamIndex) {
+					SDKHook(TracedEntity, SDKHook_OnTakeDamage, OnPropTookDamage);
 				}
 			}
 		}
@@ -176,7 +200,10 @@ PropToNail(iEnt) {
 	if (iEnt != -1 && IsValidEntity(iEnt) && !g_bNailed[iEnt]) {
 		SetEntProp(iEnt, Prop_Data, "m_takedamage", 2, 1);
 		SetEntityMoveType(iEnt, MOVETYPE_NONE); //Let's Freeze That Prop
-		//TF2_HasGlow(iEnt);
+		SetEntProp(iEnt, Prop_Data, "m_iHealth", 1500);
+		if (TF2_HasGlow(iEnt)) {
+			TF2_RemoveGlow(iEnt);
+		}
 		TF2_CreateGlow(iEnt); //Let's create Outline (green)
 		g_bNailed[iEnt] = true;
 		SetVariantInt(255);
@@ -184,6 +211,7 @@ PropToNail(iEnt) {
 		EmitSoundToAll("weapons/crowbar/crowbar_impact2.wav");
 	}
 }
+
 
 stock int TF2_CreateGlow(int iEnt)
 {
@@ -234,6 +262,29 @@ stock bool TF2_HasGlow(int iEnt)
 	
 	return false;
 }
+stock TF2_RemoveGlow(int iEnt) {
+	int index = -1;
+	while ((index = FindEntityByClassname(index, "tf_glow")) != -1) {
+		if (GetEntPropEnt(index, Prop_Send, "m_hTarget") == iEnt) {
+			AcceptEntityInput(index, "Kill");
+		}
+	}
+}
+stock TF2_GlowColour(int iEnt) {
+	int index = -1;
+	int color[4];
+	while ((index = FindEntityByClassname(index, "tf_glow")) != -1) {
+		if (GetEntPropEnt(index, Prop_Send, "m_hTarget") == iEnt) {
+			color[0] = 255;
+			color[1] = 255;
+			color[2] = 0;
+			color[3] = 255;
+			SetVariantColor(color);
+			AcceptEntityInput(index, "SetGlowColor");
+		}
+	}
+}
+
 stock GetActiveIndex(iClient)
 {
 	return GetWeaponIndex(GetEntPropEnt(iClient, Prop_Send, "m_hActiveWeapon"));
@@ -293,7 +344,29 @@ stock bool IsValidClient(client, bool:nobots = true)
 	}
 	return IsClientInGame(client);
 }
-
+void RotateProp(int iEnt, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3]) {
+	if (iEnt != -1 && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
+		start[0] = start[0] + end[0] * TRACE_START;
+		start[1] = start[1] + end[1] * TRACE_START;
+		start[2] = start[2] + end[2] * TRACE_START;
+		
+		end[0] = start[0] + end[0] * TRACE_END * 2;
+		end[1] = start[1] + end[1] * TRACE_END * 2;
+		end[2] = start[2] + end[2] * TRACE_END * 2;
+		TR_TraceRayFilter(start, end, CONTENTS_SOLID, RayType_EndPoint, TraceRayHitSelf, 0);
+		if (TR_DidHit(null)) {
+			TR_GetEndPosition(end, null);
+			TR_GetPlaneNormal(null, normal);
+			GetVectorAngles(normal, normal);
+			normal[0] = normal[0] + 90.0;
+			//normal[1] = normal[1] + 90.0;
+			//normal[2] = normal[2] + 90.0;
+			TeleportEntity(iEnt, end, normal, NULL_VECTOR);
+			//SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
+			//SetEntityRenderMode(iEnt, RENDER_NONE);
+		}
+	}
+}
 /*void Move(int iEnt, Float:start[3], Float:angle[3], Float:end[3], Float:normal[3]) {
 	if (iEnt != -1 && IsValidEntity(iEnt) && !IsValidClient(iEnt)) {
 		start[0] = start[0] + end[0] * TRACE_START;
@@ -320,42 +393,19 @@ stock bool IsValidClient(client, bool:nobots = true)
 
 //SDKHook(iEnt, SDKHook_OnTakeDamage, OnPropTookDamage);
 //SDKHook(iEnt, SDKHook_StartTouch, Human_Touch);
-/*
+
 public Action:OnPropTookDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
 	int cHP = GetEntProp(victim, Prop_Data, "m_iHealth");
 	float flPos[3];
-	//GetClientAbsOrigin(attacker, flPos);
-	if (GetClientTeam(attacker) == g_iHumTeamIndex) {
-		PrintHintText(attacker, "PropHealth:%d", cHP);
-		switch (TF2_GetPlayerClass(attacker)) {
-			case TFClass_Engineer: {
-				SetEntProp(victim, Prop_Data, "m_iHealth", cHP + 60);
-			}
-		}
-	}
 	if (IsValidClient(attacker)) {
+		PrintHintText(attacker, "Prop Health:%d", cHP);
 		GetClientAbsOrigin(attacker, flPos);
-		EmitSoundToAll("sound/physics/concrete/concrete_break3.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, attacker, flPos, NULL_VECTOR, true, 0.0);
+		EmitSoundToAll("physics/concrete/concrete_break3.wav", victim, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, 100, attacker, flPos, NULL_VECTOR, true, 0.0);
 		//GetClientAbsOrigin(attacker, flPos);
-	}
-	if (cHP < 500 && cHP > 0 && IsValidEntity(victim)) {
-		CreateTimer(0.1, ChangeColour, victim, TIMER_FLAG_NO_MAPCHANGE);
-	}
-	
-}*/
-/*
-public Action:ChangeColour(Handle:timer, any:victim) {
-	int color[4];
-	if (victim != -1 && IsValidEntity(victim)) {
-		int iGlow = TF2_CreateGlow(victim);
-		color[0] = 255;
-		color[1] = 0;
-		color[2] = 0;
-		color[3] = 255;
-		SetVariantColor(color);
-		AcceptEntityInput(iGlow, "SetGlowColor");
+		TF2_GlowColour(victim);
 	}
 }
+/*
 public Action:Human_Touch(int iEnt, int client) {
 	if (GetEntProp(client, Prop_Data, "m_nSolidType") && !(GetEntProp(client, Prop_Data, "m_usSolidFlags") & 0x0004))
 	{

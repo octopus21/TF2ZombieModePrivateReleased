@@ -4,31 +4,36 @@
 	"Players Cant Change Team Setup"
 	{
 		"en"		"You can't change team during the intermission."
-        "tr"        "Haz�rl�k s�resi esnas�nda tak�m de�i�tiremezsiniz."
+        "tr"        "Hazэrlэk sьresi esnasэnda takэm deрiюtiremezsiniz."
+		"ru"		"Вы не можете сменить команду во время подготовки."
 	}
 	
 	"Players Cant Change Class Round"
 	{
 	    "en"        "You can't change class during round"
-		"tr"        "Round esnas�nda s�n�f de�i�tiremezsiniz."
+		"tr"        "Round esnasэnda sэnэf deрiюtiremezsiniz."
+		"ru"        "Вы не можете сменить класс во время раунда"
 	}
 	
 	"Intermission Over"
 	{
 	    "en"        "Intermission Over!"
-		"tr"        "Haz�rl�k bitti!"
+		"tr"        "Hazэrlэk bitti!"
+		"ru"        "Подготовка окончена!"
 	}
 	
 	"Player Cant Become Zombie Intermission"
 	{
 	    "en"        "You can't become a zombie during the intermission."
-		"tr"        "Haz�rl�k s�resi esnas�nda zombi olamazs�n�z."
+		"tr"        "Hazэrlэk sьresi esnasэnda zombi olamazsэnэz."
+		"ru"        "Вы не можете стать зомби во время подготовки."
 	}
 	
 	"Engineer Limit Is Reached"
 	{
 	    "en"        "Engineer limit is reached! You can't choose engineer!."
-		"tr"        "Engineer limiti doldu. Art�k se�emezsiniz."
+		"tr"        "Engineer limiti doldu. Artэk seзemezsiniz."
+		"ru"        "Лимит Инженеров достигнут! Вы не можете выбрать Инженера!."
 	}
 	
 	

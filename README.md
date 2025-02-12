@@ -10,3 +10,6 @@ Zombie team will be BLUE and Human Team will be RED
 
 For example in ZM ZOM ZE ZS MAPS
 Zombie team will be RED and Human Team will be BLUE
+
+
+NOT: MOSTLY EXPERIMENTAL STUFF. THIS CODE IS OUTDATED.
